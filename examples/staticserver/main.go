@@ -5,8 +5,7 @@ import (
 )
 
 func main() {
-	s := httpsvr.NewEasyServer(":1123")
-	// TODO
-	s.AddMiddleware(httpsvr.NewMiddleStatic("static", []string{"/static/"}))
+	s := httpsvr.NewEasyServer(":1212")
+	s.AddMiddleware(httpsvr.NewMiddleStatic("/static", "./static"))
 	s.ListenAndServe()
 }

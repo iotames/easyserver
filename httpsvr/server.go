@@ -106,9 +106,9 @@ func (s *EasyServer) AddHandler(method, urlpath string, ctxfunc func(ctx Context
 }
 
 func (s *EasyServer) ListenAndServe() error {
-	if len(s.middles) == 0 {
-		s.middles = GetDefaultMiddlewareList()
-	}
+	// if len(s.middles) == 0 {
+	// 	s.middles = GetDefaultMiddlewareList()
+	// }
 	if len(s.routingList) == 0 {
 		fmt.Printf("----routingList不能为空。已启用默认路由设置。请使用AddRouting或AddHandler方法添加路由，以处理业务逻辑-----\n")
 		s.routingList = GetDefaultRoutingList()
@@ -119,6 +119,7 @@ func (s *EasyServer) ListenAndServe() error {
 	for i, r := range s.routingList {
 		fmt.Printf("---[%d]--RoutePath(%s)---Methods(%+s)--\n", i, r.Path, r.Methods)
 	}
+	// TODO 添加一道中间件，做收尾工作。
 	s.middles = append(s.middles, NewMiddleRouter(s.routingList))
 	s.httpServer.Handler = s
 	return s.httpServer.ListenAndServe()

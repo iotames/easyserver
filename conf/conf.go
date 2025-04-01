@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -21,5 +22,12 @@ func GetStaticDir() string {
 	if ok {
 		return dirpath
 	}
-	return "static"
+	// 获取当前工作目录
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("获取当前工作目录失败:", err)
+		return "./"
+	}
+	// fmt.Println("当前工作目录:", wd)
+	return wd
 }

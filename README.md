@@ -15,7 +15,8 @@
 
 ## 快速开始
 
-入口文件 `main.go`
+
+API接口服务：
 
 ```
 package main
@@ -26,10 +27,27 @@ import (
 )
 
 func main() {
-	s := httpsvr.NewEasyServer(":1598")
+	s := httpsvr.NewEasyServer(":1212")
+	s.AddMiddleware(httpsvr.NewMiddleCORS("*"))
 	s.AddHandler("GET", "/hello", func(ctx httpsvr.Context) {
 		ctx.Writer.Write(response.NewApiDataOk("hello api").Bytes())
 	})
+	s.ListenAndServe()
+}
+```
+
+静态资源服务：
+
+```
+package main
+
+import (
+	"github.com/iotames/easyserver/httpsvr"
+)
+
+func main() {
+	s := httpsvr.NewEasyServer(":1212")
+	s.AddMiddleware(httpsvr.NewMiddleStatic("/static", "./static"))
 	s.ListenAndServe()
 }
 ```

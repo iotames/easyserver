@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	s := httpsvr.NewEasyServer(":1598")
+	s := httpsvr.NewEasyServer(":1212")
 	s.SetData("dt111", "dtv126")
 	s.AddHandler("GET", "/hello", func(ctx httpsvr.Context) {
 		df := ctx.DataFlow
