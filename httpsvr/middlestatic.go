@@ -29,55 +29,52 @@ func NewMiddleStatic(urlPathBegin string, wwwroot string) *middleStatic {
 	return &middleStatic{wwwrootDir: wwwroot, staticUrlPath: urlPathBegin}
 }
 
-// 自己以前写的代码注释掉，AI写的好像更简洁
-func (m middleStatic) matchStaticUrl(w http.ResponseWriter, fpath, staticUrlPath string) bool {
+// matchStaticUrl 匹配命中URL静态资源
+func (m middleStatic) matchStaticUrl(w http.ResponseWriter, r *http.Request, fpath, staticUrlPath string) bool {
 	var err error
-	// 匹配命中URL静态资源
-	var finfo fs.FileInfo
+	var fileInfo fs.FileInfo
 	if conf.UseEmbedFile() {
-		// finfo, err = fs.Stat(resource.ResourceFs, fpath)
+		// fileInfo, err = fs.Stat(resource.ResourceFs, fpath)
 		panic("not support UseEmbedFile")
 	} else {
-		finfo, err = os.Stat(fpath)
+		fileInfo, err = os.Stat(fpath)
 	}
-	fmt.Printf("----in-range-staticUrlPath--staticUrlPath(%s)--err(%v)--\n", staticUrlPath, err)
+	fmt.Printf("---staticUrlPath(%s)--fpath(%s)--os.Stat.err(%v)--\n", staticUrlPath, fpath, err)
 
+	// 1. 先检查文件是否存在（不实际打开文件）
 	if err != nil {
 		if os.IsNotExist(err) {
-			// 文件不存在
+			// 文件不存在，继续后续中间件处理
 			// errWrite(w, "file IsNotExist ", 400)
 			return true
 		}
 		// 其他错误
-		errWrite(w, err.Error(), 500)
+		errWrite(w, err.Error(), http.StatusInternalServerError)
 		return false
 	}
 
-	if finfo.IsDir() {
-		errWrite(w, "not allow visit dir path", 400)
+	// 2. 检查是否是目录
+	if fileInfo.IsDir() {
+		errWrite(w, "directory access not allowed", http.StatusForbidden)
 		return false
 	}
 
+	// 3. 只有在前面的检查都通过后，才实际打开文件
+	var file fs.File
 	var b []byte
 	if conf.UseEmbedFile() {
-		// b, err = resource.ResourceFs.ReadFile(fpath)
+		// file, err = resource.ResourceFs.Open(fpath)
 		panic("not support UseEmbedFile")
 	} else {
-		var f *os.File
-		f, err = os.Open(fpath)
-		if err != nil {
-			errWrite(w, err.Error(), 500)
-			return false
-		}
-		b, err = io.ReadAll(f)
+		file, err = os.Open(fpath)
 	}
-
 	if err != nil {
-		errWrite(w, err.Error(), 500)
+		errWrite(w, err.Error(), http.StatusInternalServerError)
 		return false
 	}
+	defer file.Close()
 
-	// 设置正确的Content-Type
+	// 4. 设置Content-Type
 	ext := filepath.Ext(fpath)
 	switch ext {
 	case ".css":
@@ -96,9 +93,21 @@ func (m middleStatic) matchStaticUrl(w http.ResponseWriter, fpath, staticUrlPath
 		w.Header().Set("Content-Type", "text/plain")
 	}
 
-	w.Header().Set(`Content-Length`, fmt.Sprintf("%d", len(b)))
-	w.Write(b)
-	// http.ServeContent(w, r, fileInfo.Name(), fileInfo.ModTime(), file)
+	// 5. 提供文件内容
+	if readSeeker, ok := file.(io.ReadSeeker); ok {
+		http.ServeContent(w, r, fileInfo.Name(), fileInfo.ModTime(), readSeeker)
+	} else {
+		// 回退方案
+		fmt.Printf("----not-readSeeker--file(%s)---can not use cache to read file by http.ServeContent---\n", fpath)
+		b, err = io.ReadAll(file)
+		if err != nil {
+			errWrite(w, err.Error(), http.StatusInternalServerError)
+			return false
+		}
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(b)))
+		w.Write(b)
+	}
+
 	return false
 }
 
@@ -114,10 +123,6 @@ func (m middleStatic) Handler(w http.ResponseWriter, r *http.Request, dataFlow *
 
 	var fpath string
 	if conf.UseEmbedFile() {
-		// fpath = rpath
-		// if strings.Index(rpath, "/") == 0 {
-		// 	fpath = strings.Replace(fpath, "/", "", 1)
-		// }
 		fpath = strings.TrimPrefix(rpath, "/")
 	} else {
 		// 处理普通文件系统的情况
@@ -127,5 +132,5 @@ func (m middleStatic) Handler(w http.ResponseWriter, r *http.Request, dataFlow *
 		fpath = filepath.Join(m.wwwrootDir, filepath.Clean("/"+relativePath))
 	}
 	fmt.Printf("---[Static] Request Path:(%s)---File Path:(%s)---staticUrlPath(%s)---\n", rpath, fpath, m.staticUrlPath)
-	return m.matchStaticUrl(w, fpath, m.staticUrlPath)
+	return m.matchStaticUrl(w, r, fpath, m.staticUrlPath)
 }
