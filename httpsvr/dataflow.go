@@ -11,7 +11,7 @@ type DataFlow struct {
 	lock       *sync.RWMutex
 }
 
-// NewDataFlow 新建数据流传递对象
+// NewDataFlow 新建数据流传递对象。仅在同一次请求的生命周期中有效。
 func NewDataFlow() *DataFlow {
 	s := &DataFlow{
 		contextMap: make(map[string]GlobalData),

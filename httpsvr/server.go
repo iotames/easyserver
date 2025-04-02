@@ -75,8 +75,10 @@ func (s *EasyServer) GetData(k string) GlobalData {
 }
 
 func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 按顺序依次执行中间件。业务处理逻辑包含在路由中间件里
+	// 初始化dataflow。每个请求的生命周期中，只存在一个dataflow对象。
+	// TODO 可以取出RemoteIP, UserAgent 等信息，作为dataflow的一部分
 	dataFlow := NewDataFlow()
+	// 按顺序依次执行中间件。业务处理逻辑包含在路由中间件里
 	for _, m := range s.middles {
 		if !m.Handler(w, r, dataFlow) {
 			break
