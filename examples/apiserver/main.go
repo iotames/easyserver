@@ -7,7 +7,7 @@ import (
 
 func main() {
 	s := httpsvr.NewEasyServer(":1212")
-	s.AddMiddleware(httpsvr.NewMiddleCORS("*"))
+	s.AddMiddleHead(httpsvr.NewMiddleCORS("*"))
 	s.AddHandler("GET", "/hello", func(ctx httpsvr.Context) {
 		ctx.Writer.Write(response.NewApiDataOk("hello api").Bytes())
 	})

@@ -14,7 +14,7 @@ var svr *httpsvr.EasyServer
 func main() {
 	svr = httpsvr.NewEasyServer(":1212")
 	svr.SetData("key1", "mysitename, copyright")
-	svr.AddMiddleware(UserAuthMiddle{})
+	svr.AddMiddleHead(UserAuthMiddle{})
 	svr.AddHandler("GET", "/", func(ctx httpsvr.Context) {
 		ctx.Writer.Write([]byte("hello world"))
 	})

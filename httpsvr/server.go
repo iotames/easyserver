@@ -1,6 +1,7 @@
 package httpsvr
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,7 +24,9 @@ type GlobalData struct {
 type EasyServer struct {
 	httpServer  *http.Server
 	routingList []Routing
+	headMiddles []MiddleHandle
 	middles     []MiddleHandle
+	tailMiddles []MiddleHandle
 	data        map[string]GlobalData
 }
 
@@ -86,12 +89,16 @@ func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func (s *EasyServer) SetMiddleware(middles []MiddleHandle) {
-// 	s.middles = middles
-// }
+func (s *EasyServer) AddMiddleHead(middle MiddleHandle) {
+	s.headMiddles = append(s.headMiddles, middle)
+}
 
-func (s *EasyServer) AddMiddleware(middle MiddleHandle) {
-	s.middles = append(s.middles, middle)
+func (s *EasyServer) AddMiddleTail(middle MiddleHandle) {
+	s.tailMiddles = append(s.tailMiddles, middle)
+}
+
+func (s *EasyServer) addMiddleware(middles ...MiddleHandle) {
+	s.middles = append(s.middles, middles...)
 }
 
 func (s *EasyServer) AddRouting(routing Routing) {
@@ -108,23 +115,49 @@ func (s *EasyServer) AddHandler(method, urlpath string, ctxfunc func(ctx Context
 }
 
 func (s *EasyServer) ListenAndServe() error {
+	s.listenPrepare()
+	return s.httpServer.ListenAndServe()
+}
+
+func (s *EasyServer) ListenAndServeTLS(certFile, keyFile string) error {
+	s.listenPrepare()
+	return s.httpServer.ListenAndServeTLS(certFile, keyFile)
+}
+
+// ConfTls 自定义TLS配置。
+//
+//	import "crypto/tls"
+//
+//	tlsConfig := &tls.Config{
+//		MinVersion:               tls.VersionTLS12,
+//	}
+//	s.ConfTls(tlsConfig)
+func (s *EasyServer) ConfTls(tlsConf *tls.Config) {
+	s.httpServer.TLSConfig = tlsConf
+}
+
+func (s *EasyServer) listenPrepare() {
 	// if len(s.middles) == 0 {
 	// 	s.middles = GetDefaultMiddlewareList()
 	// }
 	if len(s.routingList) == 0 {
-		fmt.Printf("----routingList不能为空。已启用默认路由设置。请使用AddRouting或AddHandler方法添加路由，以处理业务逻辑-----\n")
+		fmt.Printf("----routingList不能为空。已启用默认路由设置。请使用AddRouting或AddHandler方法添加路由-----\n")
 		s.routingList = GetDefaultRoutingList()
 	}
+	// 前置中间件：包含静态资源设置，CORS跨域，处理用户验证等前置组件
+	s.addMiddleware(s.headMiddles...)
+	// 路由中间件。处理业务主逻辑。
+	s.addMiddleware(NewMiddleRouter(s.routingList))
+	// 后置中间件：包含耗时统计等一些收尾工作。
+	s.addMiddleware(s.tailMiddles...)
+
 	for i, m := range s.middles {
 		fmt.Printf("---[%d]--EnableMiddleware(%#v)--\n", i, m)
 	}
 	for i, r := range s.routingList {
 		fmt.Printf("---[%d]--RoutePath(%s)---Methods(%+s)--\n", i, r.Path, r.Methods)
 	}
-	// TODO 添加一道中间件，做收尾工作。
-	s.middles = append(s.middles, NewMiddleRouter(s.routingList))
 	s.httpServer.Handler = s
-	return s.httpServer.ListenAndServe()
 }
 
 func newServer(addr string) *http.Server {
