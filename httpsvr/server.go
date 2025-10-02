@@ -4,22 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"time"
 )
-
-type Context struct {
-	Writer   http.ResponseWriter
-	Request  *http.Request
-	Server   *EasyServer
-	DataFlow *DataFlow
-}
-
-type GlobalData struct {
-	Key        string
-	Rewritable bool
-	Value      interface{}
-	CreatedAt  time.Time
-}
 
 type EasyServer struct {
 	httpServer  *http.Server
@@ -40,43 +25,6 @@ func NewEasyServer(addr string) *EasyServer {
 	return &EasyServer{httpServer: newServer(addr)}
 }
 
-func (s *EasyServer) SetData(k string, v interface{}) error {
-	if s.data == nil {
-		s.data = make(map[string]GlobalData)
-	}
-	vv, ok := s.data[k]
-	if ok && !vv.Rewritable {
-		// 已存在数据不可被重写覆盖
-		return fmt.Errorf("the data with key:%s could not rewritable", k)
-	}
-	s.data[k] = GlobalData{Key: k, Value: v, CreatedAt: time.Now(), Rewritable: true}
-	return nil
-}
-
-func (s *EasyServer) SetDataReadonly(k string, v interface{}) error {
-	if s.data == nil {
-		s.data = make(map[string]GlobalData)
-	}
-	vv, ok := s.data[k]
-	if ok && !vv.Rewritable {
-		// 已存在数据不可被重写覆盖
-		return fmt.Errorf("the data with key:%s could not rewritable", k)
-	}
-	s.data[k] = GlobalData{Key: k, Value: v, CreatedAt: time.Now(), Rewritable: false}
-	return nil
-}
-
-func (s *EasyServer) GetData(k string) GlobalData {
-	if s.data == nil {
-		return GlobalData{}
-	}
-	v, ok := s.data[k]
-	if ok {
-		return v
-	}
-	return GlobalData{}
-}
-
 func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 初始化dataflow。每个请求的生命周期中，只存在一个dataflow对象。
 	// TODO 可以取出RemoteIP, UserAgent 等信息，作为dataflow的一部分
@@ -87,31 +35,6 @@ func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-}
-
-func (s *EasyServer) AddMiddleHead(middle MiddleHandle) {
-	s.headMiddles = append(s.headMiddles, middle)
-}
-
-func (s *EasyServer) AddMiddleTail(middle MiddleHandle) {
-	s.tailMiddles = append(s.tailMiddles, middle)
-}
-
-func (s *EasyServer) addMiddleware(middles ...MiddleHandle) {
-	s.middles = append(s.middles, middles...)
-}
-
-func (s *EasyServer) AddRouting(routing Routing) {
-	s.routingList = append(s.routingList, routing)
-}
-
-func (s *EasyServer) AddHandler(method, urlpath string, ctxfunc func(ctx Context)) {
-	handler := func(w http.ResponseWriter, r *http.Request, dataFlow *DataFlow) {
-		hctx := Context{Writer: w, Request: r, Server: s, DataFlow: dataFlow}
-		ctxfunc(hctx)
-	}
-	routing := Routing{Methods: []string{method}, Path: urlpath, handler: handler}
-	s.AddRouting(routing)
 }
 
 func (s *EasyServer) ListenAndServe() error {
