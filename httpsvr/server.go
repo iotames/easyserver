@@ -72,15 +72,24 @@ func (s *EasyServer) listenPrepare() {
 	// 	s.middles = GetDefaultMiddlewareList()
 	// }
 	if len(s.routingList) == 0 {
-		log.Printf("----routingList不能为空。已启用默认路由设置。请使用AddRouting或AddHandler方法添加路由-----\n")
-		s.routingList = GetDefaultRoutingList()
+		log.Printf("----Warn!!!--routingList未设置。请使用AppendRouting或AddHandler方法添加路由-----\n")
+		// s.routingList = GetDefaultRoutingList()
 	}
+
 	// 前置中间件：包含静态资源设置，CORS跨域，处理用户验证等前置组件
-	s.addMiddleware(s.headMiddles...)
+	if len(s.headMiddles) > 0 {
+		s.appendMiddleware(s.headMiddles...)
+	}
+
 	// 路由中间件。处理业务主逻辑。
-	s.addMiddleware(NewMiddleRouter(s.routingList))
+	if len(s.routingList) > 0 {
+		s.appendMiddleware(NewMiddleRouter(s.routingList))
+	}
+
 	// 后置中间件：包含耗时统计等一些收尾工作。
-	s.addMiddleware(s.tailMiddles...)
+	if len(s.tailMiddles) > 0 {
+		s.appendMiddleware(s.tailMiddles...)
+	}
 
 	for i, m := range s.middles {
 		log.Printf("---[%d]--EnableMiddleware(%T)--\n", i, m)

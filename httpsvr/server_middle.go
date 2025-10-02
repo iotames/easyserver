@@ -17,11 +17,11 @@ func (s *EasyServer) AddHandler(method, urlpath string, ctxfunc func(ctx Context
 		ctxfunc(hctx)
 	}
 	routing := Routing{Methods: []string{method}, Path: urlpath, handler: handler}
-	s.AddRouting(routing)
+	s.AppendRouting(routing)
 }
 
-func (s *EasyServer) AddRouting(routing Routing) {
-	s.routingList = append(s.routingList, routing)
+func (s *EasyServer) AppendRouting(routings ...Routing) {
+	s.routingList = append(s.routingList, routings...)
 }
 
 func (s *EasyServer) AddMiddleHead(middle MiddleHandle) {
@@ -32,6 +32,6 @@ func (s *EasyServer) AddMiddleTail(middle MiddleHandle) {
 	s.tailMiddles = append(s.tailMiddles, middle)
 }
 
-func (s *EasyServer) addMiddleware(middles ...MiddleHandle) {
+func (s *EasyServer) appendMiddleware(middles ...MiddleHandle) {
 	s.middles = append(s.middles, middles...)
 }
