@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"sync"
 )
 
 type EasyServer struct {
@@ -13,16 +14,21 @@ type EasyServer struct {
 	middles     []MiddleHandle
 	tailMiddles []MiddleHandle
 	data        map[string]GlobalData
+	lock        *sync.RWMutex
 }
 
 // NewEasyServer addr like: ":1598", "127.0.0.1:1598"
 // You Can SET ENV: USE_EMBED_FILE=true To UseEmbedFile
 func NewEasyServer(addr string) *EasyServer {
 	fmt.Printf(`
-	欢迎使用 EasyServer v1.0.1
+	欢迎使用 EasyServer v1.2.0
 	运行地址: %s
 `, addr)
-	return &EasyServer{httpServer: newServer(addr)}
+	return &EasyServer{
+		httpServer: newServer(addr),
+		data:       make(map[string]GlobalData),
+		lock:       &sync.RWMutex{},
+	}
 }
 
 func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
