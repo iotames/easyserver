@@ -11,5 +11,7 @@ func main() {
 	s.AddHandler("GET", "/hello", func(ctx httpsvr.Context) {
 		ctx.Writer.Write(response.NewApiDataOk("hello api").Bytes())
 	})
-	s.ListenAndServe()
+	if err := s.ListenAndServe(); err != nil {
+		panic(err)
+	}
 }

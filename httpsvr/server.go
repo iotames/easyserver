@@ -2,10 +2,12 @@ package httpsvr
 
 import (
 	"crypto/tls"
-	"fmt"
+	"log"
 	"net/http"
 	"sync"
 )
+
+const MAIN_VERSION = "v1.2.0"
 
 type EasyServer struct {
 	httpServer  *http.Server
@@ -20,10 +22,10 @@ type EasyServer struct {
 // NewEasyServer addr like: ":1598", "127.0.0.1:1598"
 // You Can SET ENV: USE_EMBED_FILE=true To UseEmbedFile
 func NewEasyServer(addr string) *EasyServer {
-	fmt.Printf(`
-	欢迎使用 EasyServer v1.2.0
+	log.Printf(`
+	欢迎使用 EasyServer %s ------>>> github.com/iotames/easyserver
 	运行地址: %s
-`, addr)
+`, MAIN_VERSION, addr)
 	return &EasyServer{
 		httpServer: newServer(addr),
 		data:       make(map[string]GlobalData),
@@ -70,7 +72,7 @@ func (s *EasyServer) listenPrepare() {
 	// 	s.middles = GetDefaultMiddlewareList()
 	// }
 	if len(s.routingList) == 0 {
-		fmt.Printf("----routingList不能为空。已启用默认路由设置。请使用AddRouting或AddHandler方法添加路由-----\n")
+		log.Printf("----routingList不能为空。已启用默认路由设置。请使用AddRouting或AddHandler方法添加路由-----\n")
 		s.routingList = GetDefaultRoutingList()
 	}
 	// 前置中间件：包含静态资源设置，CORS跨域，处理用户验证等前置组件
@@ -81,10 +83,10 @@ func (s *EasyServer) listenPrepare() {
 	s.addMiddleware(s.tailMiddles...)
 
 	for i, m := range s.middles {
-		fmt.Printf("---[%d]--EnableMiddleware(%#v)--\n", i, m)
+		log.Printf("---[%d]--EnableMiddleware(%T)--\n", i, m)
 	}
 	for i, r := range s.routingList {
-		fmt.Printf("---[%d]--RoutePath(%s)---Methods(%+s)--\n", i, r.Path, r.Methods)
+		log.Printf("---[%d]--RoutePath(%s)---Methods(%+s)--\n", i, r.Path, r.Methods)
 	}
 	s.httpServer.Handler = s
 }
