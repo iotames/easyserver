@@ -4,13 +4,6 @@ import (
 	"net/http"
 )
 
-type Context struct {
-	Writer   http.ResponseWriter
-	Request  *http.Request
-	Server   *EasyServer
-	DataFlow *DataFlow
-}
-
 func (s *EasyServer) AddHandler(method, urlpath string, ctxfunc func(ctx Context)) {
 	handler := func(w http.ResponseWriter, r *http.Request, dataFlow *DataFlow) {
 		hctx := Context{Writer: w, Request: r, Server: s, DataFlow: dataFlow}
