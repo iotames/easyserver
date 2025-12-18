@@ -18,7 +18,7 @@
 
 API接口服务：
 
-```
+```go
 package main
 
 import (
@@ -29,6 +29,8 @@ import (
 func main() {
 	s := httpsvr.NewEasyServer(":1212")
 	s.AddMiddleHead(httpsvr.NewMiddleCORS("*"))
+	// 默认状态码code=200，可自定义code=0
+	response.SetOkCode(0)
 	s.AddHandler("GET", "/hello", func(ctx httpsvr.Context) {
 		ctx.Writer.Write(response.NewApiDataOk("hello api").Bytes())
 	})

@@ -18,9 +18,11 @@ type middleStatic struct {
 	staticUrlPath string
 }
 
-// NewMiddleStatic 静态资源中间件。例: NewMiddleStatic("/static", "./static"), NewMiddleStatic("/", "")
+// NewMiddleStatic 静态资源中间件。
 // urlPathBegin 启用静态资源的URL路径。必须以正斜杠/开头。如 "/static/" 或 "/static"
 // wwwroot 网站根目录。默认值为当前工作目录 或 "./"
+//
+//	NewMiddleStatic("/static", "./static") NewMiddleStatic("/", "")
 func NewMiddleStatic(urlPathBegin string, wwwroot string) *middleStatic {
 	if wwwroot == "" {
 		// 获取当前工作目录

@@ -5,6 +5,14 @@ import (
 	"net/http"
 )
 
+var codeOk int = http.StatusOK
+
+// SetOkCode 定义默认状态码。
+// API接口成功默认返回 code=200 msg=success
+func SetOkCode(code int) {
+	codeOk = code
+}
+
 type JsonObject map[string]interface{}
 
 type ResponseApiData struct {
@@ -27,7 +35,7 @@ func (a ResponseApiData) String() string {
 }
 
 func NewApiDataOk(msg string) *ResponseApiData {
-	return NewApiData(JsonObject{}, msg, http.StatusOK)
+	return NewApiData(JsonObject{}, msg, codeOk)
 }
 
 func NewApiDataFail(msg string, code int) *ResponseApiData {
@@ -53,3 +61,11 @@ func NewApiDataServerError(msg string) *ResponseApiData {
 func NewApiDataQueryArgsError(msg string) *ResponseApiData {
 	return NewApiDataFail("QueryArgsError.请求参数错误:"+msg, http.StatusBadRequest)
 }
+
+// TODO
+// func (ctx Context) ResponseSuccess(msg string) error {
+// 	_, err := ctx.Writer.Write(response.NewApiDataOk(msg).Bytes())
+// 	return err
+// }
+// ctx.Writer.Write(response.NewApiDataQueryArgsError(err.Error()).Bytes())
+// ctx.Writer.Write(response.NewApiDataOk("hello api").Bytes())

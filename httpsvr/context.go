@@ -34,3 +34,12 @@ func (ctx Context) GetPostJson(v any) error {
 	}
 	return err
 }
+
+// GetQueryValue 获取URL参数
+func (ctx Context) GetQueryValue(k string, defauleValue string) string {
+	v := ctx.Request.URL.Query().Get(k)
+	if v == "" {
+		return defauleValue
+	}
+	return v
+}
