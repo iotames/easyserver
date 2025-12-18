@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 type Context struct {
@@ -42,4 +45,57 @@ func (ctx Context) GetQueryValue(k string, defauleValue string) string {
 		return defauleValue
 	}
 	return v
+}
+
+// TODO uploadfile 获取上传的文件
+// formKey 表单字段名。默认为file
+func (ctx Context) GetUploadFile(formKey string, saveFilePath string) (file multipart.File, fileInfo *multipart.FileHeader, err error) {
+	if formKey == "" {
+		formKey = "file"
+	}
+
+	// 获取上传的文件
+	file, fileInfo, err = ctx.Request.FormFile(formKey)
+	if err != nil {
+		err = fmt.Errorf("get request file error: %w", err)
+		return
+	}
+	// fmt.Printf("----------upload-----filename(%s)----\n", header.Filename)
+	defer file.Close()
+
+	uploadDir := filepath.Dir(saveFilePath)
+
+	if !isPathExists(uploadDir) {
+		if err = os.MkdirAll(uploadDir, 0755); err != nil {
+			err = fmt.Errorf("创建上传目录失败: %w", err)
+			return
+		}
+	}
+	var dst *os.File
+	dst, err = os.Create(saveFilePath)
+	if err != nil {
+		err = fmt.Errorf("目标文件 %s 创建失败: %w", saveFilePath, err)
+		return
+	}
+	defer dst.Close()
+
+	// 将上传文件内容复制到目标文件
+	if _, err = io.Copy(dst, file); err != nil {
+		err = fmt.Errorf("目标文件 %s 保存失败: %w", saveFilePath, err)
+		return
+	}
+	return
+}
+
+// isPathExists 判断文件或文件夹是否存在
+func isPathExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		// fmt.Println(stat.IsDir())
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
 }
