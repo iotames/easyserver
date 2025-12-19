@@ -7,16 +7,17 @@ import (
 	"sync"
 )
 
-const MAIN_VERSION = "v1.2.0"
+const MAIN_VERSION = "v1.3.0"
 
 type EasyServer struct {
-	httpServer  *http.Server
-	routingList []Routing
-	headMiddles []MiddleHandle
-	middles     []MiddleHandle
-	tailMiddles []MiddleHandle
-	data        map[string]GlobalData
-	lock        *sync.RWMutex
+	httpServer           *http.Server
+	responseHeaderMiddle MiddleHandle
+	routingList          []Routing
+	headMiddles          []MiddleHandle
+	middles              []MiddleHandle
+	tailMiddles          []MiddleHandle
+	data                 map[string]GlobalData
+	lock                 *sync.RWMutex
 }
 
 // NewEasyServer addr like: ":1598", "127.0.0.1:1598"

@@ -58,14 +58,11 @@ func NewApiDataServerError(msg string) *ResponseApiData {
 	return NewApiDataFail("ServerError.服务器内部错误:"+msg, http.StatusInternalServerError)
 }
 
+// TODO Deprecated. This function will be removed in the future.
 func NewApiDataQueryArgsError(msg string) *ResponseApiData {
 	return NewApiDataFail("QueryArgsError.请求参数错误:"+msg, http.StatusBadRequest)
 }
 
-// TODO
-// func (ctx Context) ResponseSuccess(msg string) error {
-// 	_, err := ctx.Writer.Write(response.NewApiDataOk(msg).Bytes())
-// 	return err
-// }
-// ctx.Writer.Write(response.NewApiDataQueryArgsError(err.Error()).Bytes())
-// ctx.Writer.Write(response.NewApiDataOk("hello api").Bytes())
+func NewApiDataRequestError(msg string) *ResponseApiData {
+	return NewApiDataFail("RequestError.请求参数错误:"+msg, http.StatusBadRequest)
+}

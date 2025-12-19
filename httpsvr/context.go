@@ -47,7 +47,7 @@ func (ctx Context) GetQueryValue(k string, defauleValue string) string {
 	return v
 }
 
-// TODO uploadfile 获取上传的文件
+// GetUploadFile 获取上传的文件
 // formKey 表单字段名。默认为file
 func (ctx Context) GetUploadFile(formKey string, saveFilePath string) (file multipart.File, fileInfo *multipart.FileHeader, err error) {
 	if formKey == "" {
@@ -85,6 +85,14 @@ func (ctx Context) GetUploadFile(formKey string, saveFilePath string) (file mult
 		return
 	}
 	return
+}
+
+// SetHeader 设置响应头
+//
+//	ctx.SetHeader("Content-Type", "text/plain; charset=utf-8")
+//	ctx.SetHeader("Content-Type", "application/json")
+func (ctx Context) SetHeader(key, value string) {
+	ctx.Writer.Header().Set(key, value)
 }
 
 // isPathExists 判断文件或文件夹是否存在

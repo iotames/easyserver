@@ -17,3 +17,7 @@ func GetDefaultRoutingList() []Routing {
 		}},
 	}
 }
+
+func (s *EasyServer) AppendRouting(routings ...Routing) {
+	s.routingList = append(s.routingList, routings...)
+}
