@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-const MAIN_VERSION = "v1.3.0"
+const MAIN_VERSION = "v1.4.0"
 
 type EasyServer struct {
 	httpServer           *http.Server
