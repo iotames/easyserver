@@ -60,7 +60,9 @@ func (c *DataFlow) GetStr(key string) string {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	if v, ok := c.contextMap[key]; ok {
-		return v.Value.(string)
+		if str, ok := v.Value.(string); ok {
+			return str
+		}
 	}
 	return ""
 }
