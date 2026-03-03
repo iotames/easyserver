@@ -95,6 +95,32 @@ func (ctx Context) SetHeader(key, value string) {
 	ctx.Writer.Header().Set(key, value)
 }
 
+// Json 响应JSON数据
+//
+//	ctx.Json(map[string]any{"code": 0, "msg": "ok"}, http.StatusOK)
+//	ctx.Json(map[string]any{"code": 1, "msg": "error"}, http.StatusInternalServerError)
+func (ctx Context) Json(data map[string]any, statusCode int) error {
+	var err error
+	var b []byte
+	b, err = json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("json encode error: %w", err)
+	}
+	ctx.SetHeader("Content-Type", "application/json")
+	ctx.Writer.WriteHeader(statusCode)
+	_, err = ctx.Writer.Write(b)
+	return err
+}
+
+// Html 响应HTML数据
+//
+//	ctx.Html("index.html", map[string]any{"title": "This is Page Title"}, http.StatusOK)
+func (ctx Context) Html(filepath string, data map[string]any, statusCode int) error {
+	ctx.SetHeader("Content-Type", "text/html;charset=utf-8")
+	ctx.Writer.WriteHeader(statusCode)
+	return SetContentByTplFile(filepath, ctx.Writer, data)
+}
+
 // isPathExists 判断文件或文件夹是否存在
 func isPathExists(path string) bool {
 	_, err := os.Stat(path)

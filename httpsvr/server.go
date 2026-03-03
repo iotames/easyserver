@@ -34,6 +34,15 @@ func NewEasyServer(addr string) *EasyServer {
 	}
 }
 
+// SetTplDelims 设置模板的左右边界符。不设置默认为 {{ 和 }}。
+//
+// Example:
+//
+//	httpsvr.SetTplDelims("<%{", "}%>")
+func (s *EasyServer) SetTplDelims(left, right string) {
+	SetTplDelims(left, right)
+}
+
 func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 初始化dataflow。每个请求的生命周期中，只存在一个dataflow对象。
 	// TODO 可以取出RemoteIP, UserAgent 等信息，作为dataflow的一部分

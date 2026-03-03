@@ -22,7 +22,9 @@ func main() {
 	s.AddGetHandler("/hello", func(ctx easyserver.HttpContext) {
 		easyserver.ResponseJsonOk(ctx, "hello api")
 	})
-
+	s.AddGetHandler("/hellojson", func(ctx easyserver.HttpContext) {
+		ctx.Json(map[string]any{"code": 6, "msg": "json api success", "data": map[string]any{"age": 18, "name": "Tom"}}, 200)
+	})
 	if err := s.ListenAndServe(); err != nil {
 		panic(err)
 	}
