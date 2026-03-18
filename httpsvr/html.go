@@ -42,10 +42,10 @@ func newTpl(name string) *template.Template {
 // Example2:
 //
 //	var bf bytes.Buffer
-//	var data = map[string]interface{}{"name": "Tom"}
+//	var data = map[string]any{"name": "Tom"}
 //	SetContentByTplFile(tplFilepath, &bf, data)
 //	SetContentByTplFile(tplFilepath, os.Stdout, data)
-func SetContentByTplFile(tplFilepath string, wr io.Writer, data interface{}) error {
+func SetContentByTplFile(tplFilepath string, wr io.Writer, data any) error {
 	// t, err := template.ParseFiles(tplFilepath)
 	t, err := parseFiles(tplFilepath)
 	if err != nil {

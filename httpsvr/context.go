@@ -115,21 +115,18 @@ func (ctx Context) Json(data map[string]any, statusCode int) error {
 // Html 响应HTML数据
 //
 //	ctx.Html("index.html", map[string]any{"title": "This is Page Title"}, http.StatusOK)
-func (ctx Context) Html(filepath string, data map[string]any, statusCode int) error {
+func (ctx Context) Html(filepath string, data any, statusCode int) error {
 	ctx.SetHeader("Content-Type", "text/html;charset=utf-8")
 	ctx.Writer.WriteHeader(statusCode)
 	return SetContentByTplFile(filepath, ctx.Writer, data)
 }
 
-// isPathExists 判断文件或文件夹是否存在
-func isPathExists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		// fmt.Println(stat.IsDir())
-		return true
-	}
-	if os.IsNotExist(err) {
-		return false
-	}
-	return false
+// Text 响应文本数据
+//
+//	ctx.Text("This is a text", http.StatusOK)
+func (ctx Context) Text(text string, statusCode int) error {
+	ctx.SetHeader("Content-Type", "text/plain;charset=utf-8")
+	ctx.Writer.WriteHeader(statusCode)
+	_, err := ctx.Writer.Write([]byte(text))
+	return err
 }
