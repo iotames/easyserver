@@ -158,7 +158,6 @@ func WithSessionStore(store SessionStore) SessionOption {
 // SetSession 创建或更新 Session
 //
 // 必需参数：
-//   - ctx:   上下文
 //   - data:  需要存储的会话数据（必须是可 JSON 序列化的）
 //
 // 可选参数通过传入 SessionOption 函数进行配置（例如修改 Cookie 名称、过期时间等）
@@ -171,11 +170,11 @@ func WithSessionStore(store SessionStore) SessionOption {
 // 示例：
 //
 //	// 使用默认配置创建 Session
-//	err := SetSession(ctx, map[string]interface{}{"user_id": 123, "role": "admin"})
+//	err := ctx.SetSession(map[string]interface{}{"user_id": 123, "role": "admin"})
 //
 //	// 自定义 Cookie 名称和有效期
-//	err := SetSession(ctx, userData, WithSessionCookieName("my_session"), WithSessionMaxAge(3600))
-func SetSession(ctx *Context, data map[string]interface{}, opts ...SessionOption) error {
+//	err := ctx.SetSession(userData, WithSessionCookieName("my_session"), WithSessionMaxAge(3600))
+func (ctx *Context) SetSession(data map[string]interface{}, opts ...SessionOption) error {
 	// 1. 构建默认配置
 	config := &SessionConfig{
 		CookieName: "session_id",
@@ -246,9 +245,6 @@ func SetSession(ctx *Context, data map[string]interface{}, opts ...SessionOption
 
 // GetSession 获取当前请求的 Session 数据
 //
-// 必需参数：
-//   - ctx: 上下文
-//
 // 可选参数通过传入 SessionOption 函数进行配置（用于指定非默认的 Cookie 名称等）
 //
 // 返回值：
@@ -257,14 +253,14 @@ func SetSession(ctx *Context, data map[string]interface{}, opts ...SessionOption
 //
 // 示例：
 //
-//	data, err := GetSession(ctx)
+//	data, err := ctx.GetSession()
 //	if err != nil {
 //		// 处理错误
 //	}
 //	if data != nil {
 //		userID := data["user_id"]
 //	}
-func GetSession(ctx *Context, opts ...SessionOption) (map[string]interface{}, error) {
+func (ctx *Context) GetSession(opts ...SessionOption) (map[string]interface{}, error) {
 	// 构建默认配置
 	config := &SessionConfig{
 		CookieName: "session_id",
@@ -307,15 +303,12 @@ func GetSession(ctx *Context, opts ...SessionOption) (map[string]interface{}, er
 
 // ClearSession 清除当前请求的 Session（删除存储中的数据并清除 Cookie）
 //
-// 必需参数：
-//   - ctx: 上下文
-//
 // 可选参数通过传入 SessionOption 函数进行配置（用于指定非默认的 Cookie 名称等）
 //
 // 示例：
 //
-//	err := ClearSession(ctx) // 登出
-func ClearSession(ctx *Context, opts ...SessionOption) error {
+//	err := ctx.ClearSession() // 登出
+func (ctx *Context) ClearSession(opts ...SessionOption) error {
 	config := &SessionConfig{
 		CookieName: "session_id",
 		Path:       "/",
@@ -374,7 +367,7 @@ func generateSessionID() (string, error) {
 //         "role":    "admin",
 //     }
 //     // 创建 Session（使用默认配置）
-//     if err := httpsvr.SetSession(ctx, userData); err != nil {
+//     if err := ctx.SetSession(userData); err != nil {
 //         ctx.Json(map[string]any{"code": 1, "msg": "登录失败"}, http.StatusInternalServerError)
 //         return
 //     }
@@ -383,7 +376,7 @@ func generateSessionID() (string, error) {
 //
 // func ProfileHandler(ctx *httpsvr.Context) {
 //     // 获取 Session 数据
-//     data, err := httpsvr.GetSession(ctx)
+//     data, err := ctx.GetSession()
 //     if err != nil {
 //         ctx.Json(map[string]any{"code": 1, "msg": "服务器错误"}, http.StatusInternalServerError)
 //         return
@@ -397,7 +390,7 @@ func generateSessionID() (string, error) {
 // }
 //
 // func LogoutHandler(ctx *httpsvr.Context) {
-//     if err := httpsvr.ClearSession(ctx); err != nil {
+//     if err := ctx.ClearSession(); err != nil {
 //         ctx.Json(map[string]any{"code": 1, "msg": "登出失败"}, http.StatusInternalServerError)
 //         return
 //     }
