@@ -199,7 +199,7 @@ func (ctx Context) CheckCookie(cookieName string) (bool, string, error) {
 //	err := ctx.SetJsonCookie("auth_info", data, 3600) // 有效期 1 小时
 //
 // 注意：Cookie 大小通常限制在 4KB 左右，请勿存储过大数据。
-func (ctx Context) SetJsonCookie(cookieName string, data interface{}, maxAge int) error {
+func (ctx Context) SetJsonCookie(cookieName string, data interface{}, maxAge int, opts ...CookieOption) error {
 	if cookieName == "" {
 		return fmt.Errorf("cookie 名称不能为空")
 	}
@@ -217,7 +217,7 @@ func (ctx Context) SetJsonCookie(cookieName string, data interface{}, maxAge int
 	encodedData := base64.StdEncoding.EncodeToString(jsonData)
 
 	// 使用 SetCookie 设置 Cookie（默认 HttpOnly=true，路径="/"）
-	return ctx.SetCookie(cookieName, encodedData, WithMaxAge(maxAge))
+	return ctx.SetCookie(cookieName, encodedData, append(opts, WithMaxAge(maxAge))...)
 }
 
 // GetJsonCookie 获取 JSON 数据的 Cookie (自动解码)
