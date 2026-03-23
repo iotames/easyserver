@@ -8,11 +8,7 @@ import (
 	e "github.com/iotames/easyserver"
 )
 
-var svr *e.Server
-
-func main() {
-	svr = e.NewServer(":1212")
-
+func setMiddle(svr *e.Server) {
 	// 设置全局响应头
 	svr.SetHeader("Server", "EasyServer")
 	// 全局生效，慎用！建议按路由分组进行配置
@@ -31,7 +27,6 @@ func main() {
 
 		ctx.SetHeader(k, v)
 	})
-	svr.ListenAndServe()
 }
 
 func hello(ctx e.HttpContext) {
@@ -47,7 +42,7 @@ func hello(ctx e.HttpContext) {
 	// 处理后续事务
 	dtkeys := df.GetDataKeys()                            // 获取所有数据的key
 	costime := time.Since(df.GetStartAt()).Microseconds() // 获取本次请求的耗时
-	globalData1 := svr.GetData("key1").Value.(string)     // 获取全局数据，比如网站名，版权信息等
+	globalData1 := ss.GetData("key1").Value.(string)      // 获取全局数据，比如网站名，版权信息等
 	fmt.Printf("---hello--GetDataKeys(%+v)--globalData1(ke1=%s)--cost(%v ms)----\n", dtkeys, globalData1, costime)
 }
 
