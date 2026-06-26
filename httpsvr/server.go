@@ -18,6 +18,7 @@ type EasyServer struct {
 	tailMiddles          []MiddleHandle
 	data                 map[string]GlobalData
 	lock                 *sync.RWMutex
+	initOnce             sync.Once
 }
 
 // NewEasyServer addr like: ":1598", "127.0.0.1:1598"
@@ -44,6 +45,10 @@ func (s *EasyServer) SetTplDelims(left, right string) {
 }
 
 func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// 惰性初始化：确保中间件链（路由、CORS、静态文件等）已组装。
+	// 通过 sync.Once 保证 ListenAndServe 和直接调用 ServeHTTP 都安全。
+	s.initOnce.Do(func() { s.listenPrepare() })
+
 	// 初始化dataflow。每个请求的生命周期中，只存在一个dataflow对象。
 	// TODO 可以取出RemoteIP, UserAgent 等信息，作为dataflow的一部分
 	dataFlow := NewDataFlow()

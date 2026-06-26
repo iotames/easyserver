@@ -40,7 +40,7 @@ func main() {
 
 静态资源服务：
 
-```
+```go
 package main
 
 import (
@@ -56,7 +56,7 @@ func main() {
 
 自定义中间件，全部配置功能，上下文数据流传递：
 
-```
+```go
 package main
 
 import (
@@ -101,4 +101,21 @@ func (h UserAuthMiddle) Handler(w http.ResponseWriter, r *http.Request, dataFlow
 	return true
 }
 
+```
+
+
+## 测试
+
+```bash
+# 运行所有测试（-count=1 禁用缓存，确保每次重新运行）
+go test -count=1 -timeout 30s .
+
+# 仅运行 HTTP 相关测试
+go test -v -count=1 -timeout 30s -run "^TestServer$|^TestAddStatic|^TestSetCORS|^TestResponse|^TestContext|^TestMiddleware|^TestDataFlow|^TestCustomOkCode|^TestNotFound|^TestPostJson|^TestMultipleHandlers" .
+
+# 仅运行 TCP/WebSocket 相关测试
+go test -v -count=1 -timeout 30s -run "^TestWebSocket|^TestTCP|^TestServerSend" .
+
+# 单个测试函数
+go test -v -count=1 -run TestWebSocketPack .
 ```

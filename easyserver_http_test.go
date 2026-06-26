@@ -195,9 +195,8 @@ func TestSetCORS(t *testing.T) {
 
 // TestResponseFunctions 测试响应函数
 func TestResponseFunctions(t *testing.T) {
-	s := easyserver.NewServer(":0")
-
 	t.Run("ResponseJson", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
 		s.AddGetHandler("/json", func(ctx easyserver.HttpContext) {
 			data := map[string]interface{}{
 				"message": "test",
@@ -227,6 +226,7 @@ func TestResponseFunctions(t *testing.T) {
 	})
 
 	t.Run("ResponseJsonOk", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
 		s.AddGetHandler("/json-ok", func(ctx easyserver.HttpContext) {
 			easyserver.ResponseJsonOk(ctx, "Operation successful")
 		})
@@ -247,6 +247,7 @@ func TestResponseFunctions(t *testing.T) {
 	})
 
 	t.Run("ResponseJsonFail", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
 		s.AddGetHandler("/json-fail", func(ctx easyserver.HttpContext) {
 			easyserver.ResponseJsonFail(ctx, "Invalid request", 400)
 		})
@@ -267,6 +268,7 @@ func TestResponseFunctions(t *testing.T) {
 	})
 
 	t.Run("ResponseText", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
 		s.AddGetHandler("/text", func(ctx easyserver.HttpContext) {
 			easyserver.ResponseText(ctx, []byte("Plain text response"))
 		})
@@ -283,9 +285,8 @@ func TestResponseFunctions(t *testing.T) {
 
 // TestContextMethods 测试Context方法
 func TestContextMethods(t *testing.T) {
-	s := easyserver.NewServer(":0")
-
 	t.Run("GetQueryValue", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
 		s.AddGetHandler("/query", func(ctx easyserver.HttpContext) {
 			q := ctx.GetQueryValue("q", "default")
 			ctx.Writer.Write([]byte(q))
@@ -301,6 +302,11 @@ func TestContextMethods(t *testing.T) {
 	})
 
 	t.Run("GetQueryValue默认值", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
+		s.AddGetHandler("/query", func(ctx easyserver.HttpContext) {
+			q := ctx.GetQueryValue("q", "default")
+			ctx.Writer.Write([]byte(q))
+		})
 		req := httptest.NewRequest("GET", "/query", nil) // 没有q参数
 		w := httptest.NewRecorder()
 		s.ServeHTTP(w, req)
@@ -311,6 +317,7 @@ func TestContextMethods(t *testing.T) {
 	})
 
 	t.Run("SetHeader", func(t *testing.T) {
+		s := easyserver.NewServer(":0")
 		s.AddGetHandler("/header", func(ctx easyserver.HttpContext) {
 			ctx.SetHeader("X-Test-Header", "TestValue")
 			ctx.Writer.Write([]byte("OK"))
