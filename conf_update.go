@@ -130,17 +130,23 @@ func (cf *Conf) SetValuesByEnvFile(envfile string) error {
 }
 
 func (cf *Conf) UpdateFile(fpath string) error {
-	var err error
 	if fpath == "" {
 		fpath = cf.files[0]
 	}
 
 	content, err := os.ReadFile(fpath)
 	if err != nil {
-		return fmt.Errorf("read file(%s) err(%v)", fpath, err)
+		if os.IsNotExist(err) {
+			// 文件不存在时，用当前值全量创建
+			content = []byte(cf.String())
+		} else {
+			return fmt.Errorf("read file(%s) err(%v)", fpath, err)
+		}
 	}
 
-	lines := strings.Split(string(content), "\n")
+	// 统一处理 CRLF 为 LF
+	text := strings.ReplaceAll(string(content), "\r", "")
+	lines := strings.Split(text, "\n")
 	updatedKeys := make(map[string]bool)
 
 	for i, line := range lines {
@@ -150,17 +156,24 @@ func (cf *Conf) UpdateFile(fpath string) error {
 		}
 		for _, item := range cf.items {
 			if item.Name == key {
-				lines[i] = fmt.Sprintf("%s = %s", key, item.GetValue())
+				lines[i] = rebuildValueLine(line, key, item.GetValue())
 				updatedKeys[key] = true
 				break
 			}
 		}
 	}
 
+	// 追加原文件中不存在的新 key
 	hasNew := false
 	for _, item := range cf.items {
 		if item.Name != "" && !updatedKeys[item.Name] {
-			if hasNew {
+			if !hasNew {
+				// 第一个新 key 前：除非文件末尾已是空行，否则加空行分隔
+				if len(lines) > 0 && lines[len(lines)-1] != "" {
+					lines = append(lines, "")
+				}
+			} else {
+				// 后续新 key 之间始终加空行分隔
 				lines = append(lines, "")
 			}
 			for _, s := range strings.Split(item.String(), "\n") {
@@ -181,4 +194,43 @@ func (cf *Conf) UpdateFile(fpath string) error {
 		return fmt.Errorf("write file(%s) err(%v)", fpath, err)
 	}
 	return nil
+}
+
+// rebuildValueLine 替换一行中的值为新值，同时保留：
+// - 字符串的引号风格（有引号保留引号，无引号不加）
+// - 等号后的行内注释（# comment）
+// - 原始缩进/间距格式
+func rebuildValueLine(line, key, newValue string) string {
+	eqIndex := strings.Index(line, "=")
+	if eqIndex < 0 {
+		return line
+	}
+
+	afterEq := line[eqIndex+1:]
+	trimmed := strings.TrimSpace(afterEq)
+	if trimmed == "" {
+		return fmt.Sprintf("%s = %s", key, newValue)
+	}
+
+	// 检测引号风格
+	if trimmed[0] == '"' || trimmed[0] == '\'' {
+		q := string(trimmed[0])
+		// 找到匹配的右引号（取最后出现的同种引号）
+		lastQ := strings.LastIndex(trimmed, q)
+		if lastQ > 0 {
+			suffix := strings.TrimSpace(trimmed[lastQ+1:])
+			if suffix != "" {
+				return fmt.Sprintf("%s = %s%s%s %s", key, q, newValue, q, suffix)
+			}
+			return fmt.Sprintf("%s = %s%s%s", key, q, newValue, q)
+		}
+	}
+
+	// 无引号：保留行内 # 注释
+	if idx := strings.Index(trimmed, "#"); idx >= 0 {
+		suffix := trimmed[idx:]
+		return fmt.Sprintf("%s = %s %s", key, newValue, suffix)
+	}
+
+	return fmt.Sprintf("%s = %s", key, newValue)
 }

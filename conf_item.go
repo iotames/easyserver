@@ -158,7 +158,7 @@ func anyToString(v any, k string) string {
 	case int:
 		result = fmt.Sprintf("%d", val)
 	case float64:
-		result = fmt.Sprintf("%.6f", val)
+		result = strconv.FormatFloat(val, 'f', -1, 64)
 	case bool:
 		result = fmt.Sprintf("%t", val)
 	case string:
