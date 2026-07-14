@@ -14,7 +14,7 @@
 
 导入 `easyconf` 工具包:
 
-```
+```go
 import (
 	"github.com/iotames/easyconf"
 )
@@ -22,7 +22,7 @@ import (
 
 可初始化1个或多个配置文件，优先级从左到右。默认: `.env`, `default.env`
 
-```
+```go
 // 生成 .env, default.env 两份配置文件。
 cf := easyconf.NewConf()
 
@@ -35,7 +35,7 @@ cf = easyconf.NewConf(".env", "common.env", "default.env")
 
 使用 `Parse(fale)` 方法读取文件中的配置值。若文件不存在，则创建。
 
-```
+```go
 var DbHost string
 var DbPort int
 cf := easyconf.NewConf()
@@ -48,7 +48,7 @@ cf.Parse(false) // 默认创建 .env, default.env 两份文件。
 
 使用 `UpdateFile()` 方法更新配置。需要指定配置文件路径，留空则默认更新第一个。
 
-```
+```go
 cf := easyconf.NewConf(".env")
 var DbHost string
 cf.StringVar(&DbHost, "DB_HOST", "127.0.0.1", "数据库主机地址")
@@ -65,7 +65,7 @@ if err != nil {
 
 ## 完整示例
 
-```
+```go
 package main
 
 import (

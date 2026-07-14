@@ -130,18 +130,55 @@ func (cf *Conf) SetValuesByEnvFile(envfile string) error {
 }
 
 func (cf *Conf) UpdateFile(fpath string) error {
-	var f *os.File
 	var err error
 	if fpath == "" {
 		fpath = cf.files[0]
 	}
-	f, err = os.OpenFile(fpath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
+
+	content, err := os.ReadFile(fpath)
 	if err != nil {
-		return fmt.Errorf("open file(%s)err(%v)", fpath, err)
+		return fmt.Errorf("read file(%s) err(%v)", fpath, err)
 	}
-	_, err = f.WriteString(cf.String())
+
+	lines := strings.Split(string(content), "\n")
+	updatedKeys := make(map[string]bool)
+
+	for i, line := range lines {
+		key, _ := GetConfStrByLine(line)
+		if key == "" {
+			continue
+		}
+		for _, item := range cf.items {
+			if item.Name == key {
+				lines[i] = fmt.Sprintf("%s = %s", key, item.GetValue())
+				updatedKeys[key] = true
+				break
+			}
+		}
+	}
+
+	hasNew := false
+	for _, item := range cf.items {
+		if item.Name != "" && !updatedKeys[item.Name] {
+			if hasNew {
+				lines = append(lines, "")
+			}
+			for _, s := range strings.Split(item.String(), "\n") {
+				lines = append(lines, s)
+			}
+			hasNew = true
+		}
+	}
+
+	f, err := os.OpenFile(fpath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
 	if err != nil {
-		return fmt.Errorf("write file(%s)err(%v)", fpath, err)
+		return fmt.Errorf("open file(%s) err(%v)", fpath, err)
 	}
-	return f.Close()
+	defer f.Close()
+
+	_, err = f.WriteString(strings.Join(lines, "\n"))
+	if err != nil {
+		return fmt.Errorf("write file(%s) err(%v)", fpath, err)
+	}
+	return nil
 }
