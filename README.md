@@ -46,7 +46,7 @@ cf.Parse(false) // 默认创建 .env, default.env 两份文件。
 
 ## 更新配置
 
-使用 `UpdateFile()` 方法更新配置。需要指定配置文件路径，留空则默认更新第一个。
+更新配置项的值并持久化到文件。`UpdateFile` 采用增量更新策略，只替换已有配置项的值行，保留原文件中的注释、空行和引号格式。
 
 ```go
 cf := easyconf.NewConf(".env")
@@ -61,6 +61,38 @@ err := cf.UpdateFile("")
 if err != nil {
 	panic(err)
 }
+```
+
+### 单个更新
+
+使用 `SetItemValue` 直接设置某个配置项的值。支持空值，键名不可为空。
+
+```go
+cf := easyconf.NewConf(".env")
+var DbHost string
+cf.StringVar(&DbHost, "DB_HOST", "127.0.0.1", "数据库主机地址")
+cf.Parse(false)
+
+cf.SetItemValue("DB_HOST", "10.0.0.1")
+cf.UpdateFile("")
+```
+
+### 批量更新
+
+使用 `UpdateByMap` 从 map 批量更新配置项并持久化到文件。空 map 或 nil 不会产生变更。
+
+```go
+cf := easyconf.NewConf(".env")
+var DbHost string
+var DbPort int
+cf.StringVar(&DbHost, "DB_HOST", "127.0.0.1", "数据库主机地址")
+cf.IntVar(&DbPort, "DB_PORT", 3306, "数据库地址端口号")
+cf.Parse(false)
+
+cf.UpdateByMap(map[string]string{
+	"DB_HOST": "10.0.0.1",
+	"DB_PORT": "5432",
+}, ".env")
 ```
 
 ## 完整示例

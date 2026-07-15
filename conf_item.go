@@ -11,11 +11,11 @@ import (
 // 包含配置名，标题，配置值，默认值，使用说明。
 type ConfItem struct {
 	Name         string // 配置项键名。键名为空字符串，则该项的值可能为注释。
-	Title        string
+	Title        string // 注释标题，在配置文件中生成为 # 开头的注释行。
 	ValueStr     string // 配置项的字符串原始值。对于只有字符串类型的环境变量很有用。
 	Value        any    // 配置项的值，类型为指针，引用传递。
 	DefaultValue any    // 配置项的默认值，值传递。
-	Usage        []string
+	Usage        []string // 多行使用说明，在配置文件中生成为 # 开头的注释行。
 }
 
 func parseIntList(val *[]int, vv string, defaultVal []int) error {
@@ -79,6 +79,8 @@ func (item *ConfItem) setValueVar(vv string) error {
 	return err
 }
 
+// GetValue 获取配置项当前值的字符串形式。
+// 根据注册时的类型（string/int/bool/float64/列表）自动格式化输出。
 func (item ConfItem) GetValue() string {
 	switch val := item.Value.(type) {
 	case nil:
@@ -100,6 +102,7 @@ func (item ConfItem) GetValue() string {
 	}
 }
 
+// GetDefaultValue 获取配置项默认值的字符串形式。
 func (item ConfItem) GetDefaultValue() string {
 	return anyToString(item.DefaultValue, item.Name)
 }
@@ -142,10 +145,12 @@ func (item ConfItem) toString(isDefaultValue bool) string {
 	return strings.Join(result, "\n")
 }
 
+// String 生成当前值的单条配置项文本（含标题、默认值说明、用法注释）。
 func (item ConfItem) String() string {
 	return item.toString(false)
 }
 
+// DefaultString 生成默认值的单条配置项文本（含标题、默认值说明、用法注释）。
 func (item ConfItem) DefaultString() string {
 	return item.toString(true)
 }
@@ -186,49 +191,3 @@ func newConfItem(pval any, name string, defval any, title string, usage ...strin
 		Usage:        usage,
 	}
 }
-
-// func getEnvDefaultStr(key, defval string) string {
-// 	v, ok := os.LookupEnv(key)
-// 	if !ok {
-// 		return defval
-// 	}
-// 	return v
-// }
-
-// func getEnvDefaultBool(key string, defval bool) bool {
-// 	v, ok := os.LookupEnv(key)
-// 	if !ok {
-// 		return defval
-// 	}
-// 	return strings.EqualFold(v, "true")
-// }
-
-// func getEnvDefaultInt(key string, defval int) int {
-// 	v, ok := os.LookupEnv(key)
-// 	if !ok {
-// 		return defval
-// 	}
-// 	vv, _ := strconv.Atoi(v)
-// 	return vv
-// }
-
-// // getEnvDefaultStrList 切片的每个元素去掉收尾空格，空字符串对应长度为0的空切片。
-// func getEnvDefaultStrList(key string, defval string, sep string) []string {
-// 	v, ok := os.LookupEnv(key)
-// 	if !ok {
-// 		v = defval
-// 	}
-// 	v = strings.TrimSpace(v)
-// 	if v == "" {
-// 		return []string{}
-// 	}
-// 	vv := strings.Split(v, sep)
-// 	var result []string
-// 	for _, iv := range vv {
-// 		vvv := strings.TrimSpace(iv)
-// 		if vvv != "" {
-// 			result = append(result, vvv)
-// 		}
-// 	}
-// 	return result
-// }

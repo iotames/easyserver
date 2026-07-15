@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// Conf 配置管理器，管理配置文件列表和已注册的配置项。
+// 通过 NewConf 创建实例，使用 StringVar/IntVar 等方法注册配置项，
+// 最后调用 Parse 从配置文件、环境变量、命令行参数中读取值。
 type Conf struct {
 	files []string
 	items []*ConfItem
@@ -39,6 +42,8 @@ func (cf Conf) DefaultString() string {
 	return strings.Join(result, "\n\n")
 }
 
+// String 生成当前配置值的完整 .env 文件内容（含注释）。
+// 每个配置项以空行分隔，包含标题、默认值说明、用法注释和键值对。
 func (cf Conf) String() string {
 	var result []string
 	for _, item := range cf.items {

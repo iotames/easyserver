@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// AddComment 添加纯注释行到配置输出中。
+// title 为注释标题（生成为 # title），comment 为多行注释内容。
+// 这些注释行无关联的配置键名，在解析时会被跳过。
 func (cf *Conf) AddComment(title string, comment ...string) {
 	cf.addItem(nil, "", nil, title, comment...)
 }
@@ -134,6 +137,12 @@ func (cf *Conf) SetValuesByEnvFile(envfile string) error {
 	return nil
 }
 
+// UpdateFile 将当前配置值持久化到指定文件。
+//
+// fpath 留空时默认更新 cf.files[0]（第一个配置文件）。
+// 采用增量更新策略：只替换已有配置项的值行，保留原文件中的注释、空行和格式。
+// 原文件中不存在的配置项会被追加到文件末尾。
+// 若文件不存在，会自动创建并用当前值全量写入。
 func (cf *Conf) UpdateFile(fpath string) error {
 	if fpath == "" {
 		fpath = cf.files[0]
