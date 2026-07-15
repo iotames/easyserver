@@ -35,6 +35,11 @@ func (cf *Conf) setItemVar(k, v string) error {
 	return err
 }
 
+// SetItemValue 设置指定配置项的值，并更新指针指向的变量。键名 k 不可为空，值 v 允许为空字符串。
+func (cf *Conf) SetItemValue(k, v string) error {
+	return cf.setItemVar(k, v)
+}
+
 // SetValuesByCmdArgs 从命令行参数获取配置。优先级高
 // 允许设置值为空字符串。
 func (cf *Conf) SetValuesByCmdArgs() []error {
@@ -194,6 +199,24 @@ func (cf *Conf) UpdateFile(fpath string) error {
 		return fmt.Errorf("write file(%s) err(%v)", fpath, err)
 	}
 	return nil
+}
+
+// UpdateByMap 通过 map 批量更新配置项的值，并将结果持久化到文件。
+//
+// mp 的键为配置项名称，值为新值。空 map 或 nil map 不会产生任何变更。
+// 如果某个键名在注册的配置项中不存在，setItemVar 会静默跳过该键。
+// 遇到错误时立即返回，已更新成功的值不会回滚。
+func (cf *Conf) UpdateByMap(mp map[string]string, fpath string) error {
+	if mp == nil {
+		return nil
+	}
+	var err error
+	for k, v := range mp {
+		if err = cf.setItemVar(k, v); err != nil {
+			return err
+		}
+	}
+	return cf.UpdateFile(fpath)
 }
 
 // rebuildValueLine 替换一行中的值为新值，同时保留：

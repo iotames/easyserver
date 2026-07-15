@@ -462,3 +462,125 @@ DB_PORT = 3306
 		t.Fatalf("两个配置项之间的空行数目应保留，实际内容:\n%q", contentStr)
 	}
 }
+
+// TestSetItemValue 验证 SetItemValue 能正确更新配置项的值。
+func TestSetItemValue(t *testing.T) {
+	const testFile = "test_setitem.env"
+	defer os.Remove(testFile)
+
+	cf := NewConf(testFile)
+	var dbHost string
+	var dbPort int
+	cf.StringVar(&dbHost, "DB_HOST", "127.0.0.1", "数据库主机地址")
+	cf.IntVar(&dbPort, "DB_PORT", 3306, "数据库地址端口号")
+
+	// 正常更新
+	if err := cf.SetItemValue("DB_HOST", "10.0.0.1"); err != nil {
+		t.Fatal(err)
+	}
+	if dbHost != "10.0.0.1" {
+		t.Fatalf("DB_HOST 应为 10.0.0.1，实际为 %s", dbHost)
+	}
+
+	// 空值允许
+	if err := cf.SetItemValue("DB_HOST", ""); err != nil {
+		t.Fatal(err)
+	}
+	if dbHost != "" {
+		t.Fatalf("DB_HOST 应为空，实际为 %s", dbHost)
+	}
+
+	// 空键名应报错
+	if err := cf.SetItemValue("", "foo"); err == nil {
+		t.Fatal("空键名应返回错误")
+	}
+
+	// 不存在的键名不报错（静默跳过）
+	if err := cf.SetItemValue("NOT_EXIST", "bar"); err != nil {
+		t.Fatalf("不存在的键名应静默跳过，但返回错误: %v", err)
+	}
+}
+
+// TestUpdateByMap 验证 UpdateByMap 批量更新并持久化到文件。
+func TestUpdateByMap(t *testing.T) {
+	const testFile = "test_updatemap.env"
+	originalContent := `DB_HOST = 127.0.0.1
+DB_PORT = 3306
+`
+	if err := os.WriteFile(testFile, []byte(originalContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(testFile)
+
+	cf := NewConf(testFile)
+	var dbHost string
+	var dbPort int
+	cf.StringVar(&dbHost, "DB_HOST", "127.0.0.1", "")
+	cf.IntVar(&dbPort, "DB_PORT", 3306, "")
+
+	if err := cf.Parse(false); err != nil {
+		t.Fatal(err)
+	}
+
+	// 批量更新
+	if err := cf.UpdateByMap(map[string]string{
+		"DB_HOST": "10.0.0.1",
+		"DB_PORT": "5432",
+	}, testFile); err != nil {
+		t.Fatal(err)
+	}
+
+	// 验证内存值已更新
+	if dbHost != "10.0.0.1" {
+		t.Fatalf("DB_HOST 应为 10.0.0.1，实际为 %s", dbHost)
+	}
+	if dbPort != 5432 {
+		t.Fatalf("DB_PORT 应为 5432，实际为 %d", dbPort)
+	}
+
+	// 验证文件已持久化
+	content, _ := os.ReadFile(testFile)
+	contentStr := string(content)
+	if !strings.Contains(contentStr, "DB_HOST = 10.0.0.1") {
+		t.Fatalf("文件应包含 DB_HOST 新值，实际内容:\n%s", contentStr)
+	}
+	if !strings.Contains(contentStr, "DB_PORT = 5432") {
+		t.Fatalf("文件应包含 DB_PORT 新值，实际内容:\n%s", contentStr)
+	}
+}
+
+// TestUpdateByMapEdgeCases 验证 UpdateByMap 的边界情况：nil map 和空 map。
+func TestUpdateByMapEdgeCases(t *testing.T) {
+	const testFile = "test_updatemap_edge.env"
+	originalContent := `DB_HOST = 127.0.0.1
+`
+	if err := os.WriteFile(testFile, []byte(originalContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(testFile)
+
+	cf := NewConf(testFile)
+	var dbHost string
+	cf.StringVar(&dbHost, "DB_HOST", "127.0.0.1", "")
+
+	if err := cf.Parse(false); err != nil {
+		t.Fatal(err)
+	}
+
+	// nil map 应无操作、不报错
+	if err := cf.UpdateByMap(nil, testFile); err != nil {
+		t.Fatalf("nil map 不应返回错误: %v", err)
+	}
+	if dbHost != "127.0.0.1" {
+		t.Fatalf("nil map 后 DB_HOST 不应变化，实际为 %s", dbHost)
+	}
+
+	// 空 map 应无操作、不报错
+	if err := cf.UpdateByMap(map[string]string{}, testFile); err != nil {
+		t.Fatalf("空 map 不应返回错误: %v", err)
+	}
+	if dbHost != "127.0.0.1" {
+		t.Fatalf("空 map 后 DB_HOST 不应变化，实际为 %s", dbHost)
+	}
+}
+
