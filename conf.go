@@ -33,6 +33,11 @@ func NewConf(files ...string) *Conf {
 	return &Conf{files: files}
 }
 
+// GetItems 返回所有注册的配置项。
+func (cf *Conf) GetItems() []*ConfItem {
+	return cf.items
+}
+
 // DefaultString 默认配置的文件内容
 func (cf Conf) DefaultString() string {
 	var result []string
