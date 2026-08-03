@@ -1,6 +1,7 @@
 package httpsvr
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"net/http"
@@ -58,6 +59,17 @@ func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+}
+
+// Shutdown 优雅停机：停止接收新连接，等待在途请求完成。
+// 委托 http.Server.Shutdown，ctx 用于控制等待超时。
+func (s *EasyServer) Shutdown(ctx context.Context) error {
+	return s.httpServer.Shutdown(ctx)
+}
+
+// Close 立即关闭服务器，不等待在途请求完成。
+func (s *EasyServer) Close() error {
+	return s.httpServer.Close()
 }
 
 func (s *EasyServer) ListenAndServe() error {
