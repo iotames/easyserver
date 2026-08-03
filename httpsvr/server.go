@@ -95,6 +95,11 @@ func (s *EasyServer) ConfTls(tlsConf *tls.Config) {
 }
 
 func (s *EasyServer) listenPrepare() {
+	// 幂等守卫：中间件链已组装过则直接返回，避免 ListenAndServe 与
+	// ServeHTTP(initOnce) 双重触发导致重复组装、handler 执行两次、响应双写。
+	if len(s.middles) > 0 {
+		return
+	}
 	// if len(s.middles) == 0 {
 	// 	s.middles = GetDefaultMiddlewareList()
 	// }
