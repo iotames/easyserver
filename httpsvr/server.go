@@ -8,7 +8,10 @@ import (
 	"sync"
 )
 
-const MAIN_VERSION = "v1.4.0"
+// MAIN_VERSION 版本号（默认值）。版本权威来源为仓库根目录 version.txt，
+// 构建时经 -ldflags "-X github.com/iotames/easyserver/httpsvr.MAIN_VERSION=$(cat version.txt)" 注入；
+// 未注入时回退到此处默认值，两者需保持一致。
+var MAIN_VERSION = "v1.5.0"
 
 type EasyServer struct {
 	httpServer           *http.Server
@@ -20,20 +23,23 @@ type EasyServer struct {
 	data                 map[string]GlobalData
 	lock                 *sync.RWMutex
 	initOnce             sync.Once
+	quiet                bool // 静默模式：不打印欢迎横幅与空路由警告（构建于其上的应用可自行控制启动日志）
 }
 
 // NewEasyServer addr like: ":1598", "127.0.0.1:1598"
 // You Can SET ENV: USE_EMBED_FILE=true To UseEmbedFile
 func NewEasyServer(addr string) *EasyServer {
-	log.Printf(`
-	欢迎使用 EasyServer %s ------>>> github.com/iotames/easyserver
-	运行地址: %s
-`, MAIN_VERSION, addr)
 	return &EasyServer{
 		httpServer: newServer(addr),
 		data:       make(map[string]GlobalData),
 		lock:       &sync.RWMutex{},
 	}
+}
+
+// SetQuiet 设置静默模式（须在 ListenAndServe/ServeHTTP 首次调用前设置）：
+// 开启后不再打印欢迎横幅与「routingList 未设置」警告。
+func (s *EasyServer) SetQuiet(quiet bool) {
+	s.quiet = quiet
 }
 
 // SetTplDelims 设置模板的左右边界符。不设置默认为 {{ 和 }}。
@@ -100,11 +106,20 @@ func (s *EasyServer) listenPrepare() {
 	if len(s.middles) > 0 {
 		return
 	}
+	// 欢迎横幅：首次组装时打印一次（静默模式跳过）。
+	if !s.quiet {
+		log.Printf(`
+	欢迎使用 EasyServer %s ------>>> github.com/iotames/easyserver
+	运行地址: %s
+`, MAIN_VERSION, s.httpServer.Addr)
+	}
 	// if len(s.middles) == 0 {
 	// 	s.middles = GetDefaultMiddlewareList()
 	// }
 	if len(s.routingList) == 0 {
-		log.Printf("----Warn!!!--routingList未设置。请使用AppendRouting或AddHandler方法添加路由-----\n")
+		if !s.quiet {
+			log.Printf("----Warn!!!--routingList未设置。请使用AppendRouting或AddHandler方法添加路由-----\n")
+		}
 		// s.routingList = GetDefaultRoutingList()
 	}
 

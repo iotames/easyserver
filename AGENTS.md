@@ -62,11 +62,16 @@ EasyServer.ServeHTTP(w, r):
 
 ### 中间件链组装时机
 
-中间件在 `listenPrepare()` 中组装，该方法由 `ListenAndServe()` / `ListenAndServeTLS()` 调用。组装顺序：
+中间件在 `listenPrepare()` 中组装，该方法由 `ListenAndServe()` / `ListenAndServeTLS()` 调用；
+首个请求经 `ServeHTTP` 的 `sync.Once`（`initOnce`）也会触发，两次入口由幂等守卫（`len(s.middles) > 0`）保证只组装一次。
+组装顺序：
 
 ```
 headMiddles → routerMiddle → tailMiddles
 ```
+
+欢迎横幅与「routingList 未设置」警告也在此方法首次执行时打印；`SetQuiet(true)`（须在首次监听前调用）可静默两者，
+供纯代理/无路由场景的应用（如 rocksys 主引擎）控制启动日志。
 
 **关键陷阱**：`listenPrepare()` **不**在 `ServeHTTP()` 中调用。这意味着通过 `httptest` 直接调用 `s.ServeHTTP(w, req)` 的测试会失败，因为 `s.middles` 为空（路由和 CORS 中间件均未注入）。测试实际上是 `go test` 时就已经注入了的——但当前测试并未调用 `ListenAndServe`。
 
@@ -158,4 +163,7 @@ go vet ./...            # 静态检查
 
 ## 版本
 
-当前版本 `v1.4.0`，定义在 `httpsvr/server.go:10`。
+当前版本权威来源为仓库根目录 `version.txt`。
+运行时值由 `httpsvr/server.go` 中的`var MAIN_VERSION` 承载（默认 `v1.5.0`，与 version.txt 保持一致）；
+构建时可用 `-ldflags "-X github.com/iotames/easyserver/httpsvr.MAIN_VERSION=$(cat version.txt)"` 注入覆盖。
+升级版本时只需编辑 `version.txt`，并同步 `httpsvr/server.go` 的默认值。
