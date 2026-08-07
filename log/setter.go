@@ -195,7 +195,7 @@ func NewOptions() *slog.HandlerOptions {
 // LogInfo 日志系统当前状态（供 GET /admin/log/info）。
 // ⚠️ 命名说明：文档原型为 `Info`，但包内已存在日志函数 `Info(msg, ...)`
 //
-//	（15 处调用方依赖），Go 包级命名空间唯一不可共存，故类型命名为 LogInfo；
+//	（17 处调用方依赖），Go 包级命名空间唯一不可共存，故类型命名为 LogInfo；
 //	字段与 JSON tag 按规格原样保留，P3 通过 GetInfo() 字段访问不受影响。
 type LogInfo struct {
 	Level          string `json:"level"`

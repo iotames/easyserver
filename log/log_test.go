@@ -42,7 +42,7 @@ func TestLevelHook(t *testing.T) {
 
 // TestCompatRegression 默认路径（无增强）输出关键字段与行结构贴近现状
 // （time=... level=... msg=...，time 用 time.DateTime 格式）；
-// 模板未引用的 attr 不输出（默认模板即丢弃全部 attr，属既定取舍）；15 处调用方行为不变。
+// 模板未引用的 attr 不输出（默认模板即丢弃全部 attr，属既定取舍）；17 处调用方行为不变。
 func TestCompatRegression(t *testing.T) {
 	setLevelForTest(t, slog.LevelDebug)
 	// 确保默认路径：无文件增强。
