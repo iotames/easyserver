@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"sync"
 )
 
@@ -55,6 +56,15 @@ func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 惰性初始化：确保中间件链（路由、CORS、静态文件等）已组装。
 	// 通过 sync.Once 保证 ListenAndServe 和直接调用 ServeHTTP 都安全。
 	s.initOnce.Do(func() { s.listenPrepare() })
+
+	// 最后防线：兜住中间件链（含转发阶段）panic，避免击穿到 net/http 导致连接中断。
+	// 记录完整堆栈（recover 只兜底不吞错）；未写响应时输出明确 500。
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("httpsvr: panic recovered: %v\n%s", rec, debug.Stack())
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
+	}()
 
 	// 初始化dataflow。每个请求的生命周期中，只存在一个dataflow对象。
 	// TODO 可以取出RemoteIP, UserAgent 等信息，作为dataflow的一部分
