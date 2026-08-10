@@ -16,8 +16,8 @@ var (
 
 	// 包级可变状态用 mutex 保护：SetLogWriterByFile/SetMaxSize 写、SetFileWriter/GetInfo 读，
 	// watcher 回调 goroutine 与 admin handler 并发时不得有数据竞争。
-	stateMu      sync.Mutex                      // 保护 filePath/maxSize（模板文件名启动时定死，不需锁）
-	templateFile            = "log.tpl"          // 模板文件名（经 ScriptDir 兜底加载）
+	stateMu      sync.Mutex                      // 保护 filePath/maxSize（模板名启动时定死，不需锁）
+	templateName            = "log"              // 模板名常量，模板已写死为内置常量 defaultLogTpl，不再有模板文件
 	filePath                = "logs/rocksys.log" // 文件存档路径（写时持 stateMu）
 	maxSize      int64      = 50 * 1024 * 1024   // 默认 50MB（写时持 stateMu）
 )
@@ -112,7 +112,7 @@ func GetInfo() LogInfo {
 	// （仅诊断字段，无碍）。FileOn 由 fanout.File()!=nil 判定，不得读 fileWriter 内部字段。
 	return LogInfo{
 		Level:          lgLevel.Level().String(),
-		Template:       templateFile,
+		Template:       templateName,
 		FileOn:         fanout.File() != nil,
 		FilePath:       filePath,
 		MaxSizeMB:      maxSize / (1024 * 1024),
@@ -199,7 +199,7 @@ func NewOptions() *slog.HandlerOptions {
 //	字段与 JSON tag 按规格原样保留，P3 通过 GetInfo() 字段访问不受影响。
 type LogInfo struct {
 	Level          string `json:"level"`
-	Template       string `json:"template"` // 当前模板文件名（log.tpl）
+	Template       string `json:"template"` // 当前模板名（内置常量模板）
 	FileOn         bool   `json:"file_on"`
 	FilePath       string `json:"file_path"`
 	MaxSizeMB      int64  `json:"max_size_mb"`

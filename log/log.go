@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"os"
 	"sync"
-	"sync/atomic"
 )
 
 var (
@@ -12,7 +11,6 @@ var (
 	lgLevel       *slog.LevelVar = &slog.LevelVar{}
 	fanout        *fanoutWriter
 	once          sync.Once
-	onceDone      atomic.Bool  // 供 SetTemplateLoader 判断 once 是否已执行（sync.Once 无公开 Done()）
 	onLevelChange func(string) // 级别变更钩子（入参为级别字符串）
 )
 
@@ -36,7 +34,7 @@ func Error(msg string, args ...any) {
 	getLogger().Error(msg, args...)
 }
 
-// getLogger 惰性初始化：console + ring 恒开，输出格式由 log.tpl 模板决定。
+// getLogger 惰性初始化：console + ring 恒开，输出格式由内置常量模板决定。
 func getLogger() *slog.Logger {
 	ensureFanout()
 	return lg
@@ -53,13 +51,12 @@ func ensureFanout() {
 		}
 		// 模板启动时加载，运行期定死（见 template.go）。
 		lg = buildLogger()
-		onceDone.Store(true)
 	})
 }
 
-// buildLogger 按 log.tpl 模板构建 slog.Logger（启动时定死，运行期不重建）。
+// buildLogger 按内置常量模板构建 slog.Logger（启动时定死，运行期不重建）。
 func buildLogger() *slog.Logger {
-	th, err := newTemplateHandler(fanout) // 加载 log.tpl，模板渲染输出
+	th, err := newTemplateHandler(fanout) // 解析内置常量模板，模板渲染输出
 	if err != nil {
 		// 模板加载失败 → 回退 slog 默认 text handler（保证可用）。
 		// ⚠️ L1 落定：NewOptions() 内部 `if !isSetLevel { lgLevel.Set(LevelInfo) }` 会把级别重置为 info。

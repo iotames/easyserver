@@ -3,7 +3,6 @@ package log
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"io"
 	"log/slog"
 	"strings"
@@ -12,28 +11,10 @@ import (
 	"time"
 )
 
-//go:embed log.tpl
-var embedLogTpl string
+// defaultLogTpl 内置默认日志模板，写死为常量，不再支持外挂覆写。
+const defaultLogTpl = "time={{.time}} level={{.level}} msg={{.msg}}"
 
-// TemplateLoader 模板加载接口（rocksys 装配时注入 hotswap.ScriptDir 适配器，接口解耦不反向依赖）。
-type TemplateLoader interface {
-	GetScriptBytes(fpath string) ([]byte, error)
-}
-
-// tplLoader 模板加载器（外挂优先，内嵌兜底）。启动装配期注入，运行期定死。
-var tplLoader TemplateLoader
-
-// SetTemplateLoader 注入模板加载器（rocksys 装配时传入）。
-// 若 once 已执行（日志已初始化），外挂模板不生效，仅打警告并拒绝静默忽略。
-func SetTemplateLoader(l TemplateLoader) {
-	if onceDone.Load() {
-		Warn("模板加载器注入过晚，外挂 log.tpl 不生效")
-		return
-	}
-	tplLoader = l
-}
-
-// templateHandler 按 log.tpl 渲染每条日志。
+// templateHandler 按内置常量模板渲染每条日志。
 type templateHandler struct {
 	mu     sync.Mutex
 	w      io.Writer
@@ -43,28 +24,12 @@ type templateHandler struct {
 	prefix string             // WithGroup 累积的 group 前缀（如 "req."），供后续 WithAttrs 加前缀
 }
 
-// newTemplateHandler 加载 log.tpl 并解析。
-// ★ 回退层级：内部先经 tplLoader（外部）加载 → 失败/为空回退内嵌 log.tpl → 仍失败才返回 error
-//
-//	（调用方 buildLogger 收到 error 才回退 slog text handler）。
+// newTemplateHandler 解析内置常量模板 defaultLogTpl。
+// 解析失败返回 error（调用方 buildLogger 收到 error 才回退 slog text handler）。
 func newTemplateHandler(w io.Writer) (*templateHandler, error) {
-	text := embedLogTpl
-	if tplLoader != nil {
-		if b, err := tplLoader.GetScriptBytes(templateFile); err == nil && len(bytes.TrimSpace(b)) > 0 {
-			text = string(b)
-		}
-	}
-	tpl, err := template.New(templateFile).Parse(text)
+	tpl, err := template.New(templateName).Parse(defaultLogTpl)
 	if err != nil {
-		// 外挂模板解析失败 → 回退内嵌默认模板。
-		if text == embedLogTpl {
-			// 内嵌模板都失败，属异常，返回 error 让调用方回退 slog text handler。
-			return nil, err
-		}
-		tpl, err = template.New(templateFile).Parse(embedLogTpl)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 	return &templateHandler{
 		w:   w,
