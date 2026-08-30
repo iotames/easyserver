@@ -66,7 +66,7 @@ func (cf *Conf) SetValuesByCmdArgs() []error {
 			case *[]int:
 				flag.StringVar(&item.ValueStr, item.Name, vstr, strings.Join(item.Usage, ";"))
 			default:
-				errs = append(errs, fmt.Errorf("设置项%s配置值%s不支持变量类型(%t)", item.Name, vstr, v))
+				errs = append(errs, fmt.Errorf("设置项%s配置值%s不支持变量类型(%T)", item.Name, vstr, v))
 			}
 		}
 	}
@@ -80,7 +80,6 @@ func (cf *Conf) SetValuesByCmdArgs() []error {
 				parseStringList(val, item.ValueStr)
 			case *[]int:
 				parseIntList(val, item.ValueStr, *val)
-				fmt.Printf("--k(%s)--vstr(%s)-------\n", item.Name, item.ValueStr)
 			}
 		}
 	}
