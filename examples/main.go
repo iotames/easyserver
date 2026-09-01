@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	e "github.com/iotames/easyserver"
-	"github.com/iotames/easyserver/custom"
-	"github.com/iotames/easyserver/hotswap"
 )
 
 var ss *e.Server
@@ -34,12 +32,4 @@ func main() {
 	if err := ss.ListenAndServe(); err != nil {
 		panic(err)
 	}
-}
-
-func init() {
-	initScript()
-}
-
-func initScript() {
-	hotswap.GetScriptDir(hotswap.NewScriptDir(custom.GetFs(), "runtime"))
 }

@@ -12,8 +12,6 @@ response.go            — 根包便捷响应函数（ResponseJson, ResponseText
 easyserver_test.go     — 集成测试（根包视角，httptest）
 
 conf/                  — 环境变量配置（USE_EMBED_FILE, STATIC_DIR）
-custom/                — embed 嵌入的 JSON 配置文件（cmdlist.json）
-hotswap/               — 外部脚本/文件热加载工具（优先搜索文件目录，fallback 到 embed）
 log/                   — slog 日志封装（Debug/Info/Warn/Error，可配输出目标、级别）
 response/              — API 响应数据结构（ResponseApiData，code/msg/data JSON）
 
@@ -171,7 +169,6 @@ headMiddles → routerMiddle → tailMiddles
 | TCP 连接处理 | `tcpsvr/handler.go:12` |
 | WebSocket 封帧 | `tcpsvr/websocket.go` |
 | API 响应封装 | `response/apidata.go` |
-| 热加载脚本 | `hotswap/script.go` |
 
 ---
 
