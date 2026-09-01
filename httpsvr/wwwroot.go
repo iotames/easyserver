@@ -1,14 +1,18 @@
 package httpsvr
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"mime"
+	"net"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 // WWWROOT 兜底：URL 在路由表与静态前缀都未命中时，ServeHTTP 链尾尝试从
@@ -69,9 +73,12 @@ func (s *EasyServer) tryServeWWWRoot(w http.ResponseWriter, r *http.Request) boo
 		return false
 	}
 	// 安全拼接：path.Clean 按POSIX语义折叠掉 .. 等相对成分，防止目录遍历攻击。
-	// 注意不能用 filepath.Clean：Windows 下 URL 以/开头拼接成 // 时会被当作
-	// UNC 前缀保留，导致 .. 不被折叠而逃逸目录。
-	fpath := filepath.Join(dir, filepath.FromSlash(path.Clean("/"+r.URL.Path)))
+	// 注意两点：
+	//  1. 不能用 filepath.Clean：Windows 下 URL 以/开头拼接成 // 时会被当作
+	//     UNC 前缀保留，导致 .. 不被折叠而逃逸目录。
+	//  2. 须先把 \ 归一化为 /：path.Clean 不把 \ 当分隔符，Windows 下请求
+	//     /..\..\x 中的 .. 不会被折叠，随后 filepath.Join 又按 \ 折叠，可逃逸目录。
+	fpath := filepath.Join(dir, filepath.FromSlash(path.Clean("/"+strings.ReplaceAll(r.URL.Path, `\`, "/"))))
 	fileInfo, err := os.Stat(fpath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -175,4 +182,15 @@ func (ww *writtenWriter) Flush() {
 // Unwrap 暴露底层 ResponseWriter，使 http.ResponseController 的能力探测能透传到底层实现。
 func (ww *writtenWriter) Unwrap() http.ResponseWriter {
 	return ww.ResponseWriter
+}
+
+// Hijack 转发底层 http.Hijacker（存在时）。中间件包装 writer 后，调用方
+// （如 WebSocket 代理）仍可能直接断言 http.Hijacker，必须显式透传，
+// 否则断言失败导致连接劫持类功能不可用。
+func (ww *writtenWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	ww.written = true
+	if hj, ok := ww.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, errors.New("httpsvr: underlying ResponseWriter does not implement http.Hijacker")
 }

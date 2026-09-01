@@ -12,7 +12,7 @@ import (
 // MAIN_VERSION 版本号（默认值）。版本权威来源为仓库根目录 version.txt，
 // 构建时经 -ldflags "-X github.com/iotames/easyserver/httpsvr.MAIN_VERSION=$(cat version.txt)" 注入；
 // 未注入时回退到此处默认值，两者需保持一致。
-var MAIN_VERSION = "v1.6.0"
+var MAIN_VERSION = "v1.6.1"
 
 type EasyServer struct {
 	httpServer           *http.Server

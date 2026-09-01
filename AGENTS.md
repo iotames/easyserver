@@ -121,7 +121,10 @@ headMiddles → routerMiddle → tailMiddles
 
 `middlestatic.go` / `wwwroot.go` 使用 `path.Clean`（POSIX 语义）+ `filepath.FromSlash` + `filepath.Join` 防止 `../` 攻击。
 **必须用 `path.Clean` 而非 `filepath.Clean`**：Windows 下 URL 以 `/` 开头拼接成 `//` 时，`filepath.Clean`
-会将其当作 UNC 前缀保留、`..` 不被折叠，可逃逸目录（已修复的真实漏洞）。必须先 `os.Stat` 检查存在性，再 `os.Open` 打开文件。
+会将其当作 UNC 前缀保留、`..` 不被折叠，可逃逸目录（已修复的真实漏洞）。
+**必须先把 `\` 归一化为 `/` 再 `path.Clean`**：`path.Clean` 不把 `\` 当分隔符，Windows 下请求 `/..\..\x`
+中的 `..` 不会被折叠，随后 `filepath.Join` 又按 `\` 折叠，同样可逃逸目录（`%5c` 编码变体同此，已修复的真实漏洞）。
+必须先 `os.Stat` 检查存在性，再 `os.Open` 打开文件。
 
 ### CORS 只能设置一次
 

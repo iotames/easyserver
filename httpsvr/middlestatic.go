@@ -80,8 +80,10 @@ func (m middleStatic) Handler(w http.ResponseWriter, r *http.Request, dataFlow *
 		// 处理普通文件系统的情况
 		// 1. 移除静态URL前缀
 		relativePath := strings.TrimPrefix(rpath, m.staticUrlPath)
-		// 2. 安全拼接路径，防止目录遍历攻击。path.Clean 按POSIX语义折叠 ..，
-		// 避免 Windows 下 // 前缀被当作 UNC 导致 .. 未折叠而逃逸目录
+		// 2. 安全拼接路径，防止目录遍历攻击。path.Clean 按POSIX语义折叠 ..；
+		// 先把 \ 归一化为 /（path.Clean 不把 \ 当分隔符，Windows 下 /..\..\x
+		// 的 .. 不会被折叠，随后 filepath.Join 又按 \ 折叠，可逃逸目录）
+		relativePath = strings.ReplaceAll(relativePath, `\`, "/")
 		fpath = filepath.Join(m.wwwrootDir, filepath.FromSlash(path.Clean("/"+relativePath)))
 	}
 	fmt.Printf("---[Static] Request Path:(%s)---File Path:(%s)---staticUrlPath(%s)---\n", rpath, fpath, m.staticUrlPath)

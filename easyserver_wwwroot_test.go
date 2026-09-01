@@ -1,6 +1,8 @@
 package easyserver_test
 
 import (
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -93,6 +95,22 @@ func TestWWWRootFallback(t *testing.T) {
 		}
 	})
 
+	t.Run("反斜杠目录遍历攻击不泄露文件", func(t *testing.T) {
+		// path.Clean 不把 \ 当分隔符，Windows 下 filepath.Join 又按 \ 折叠，
+		// /..\..\ 变体曾可逃逸 wwwroot（真实漏洞）
+		outside := filepath.Join(filepath.Dir(dir), "outside_secret.txt")
+		if err := os.WriteFile(outside, []byte("secret"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(outside)
+		for _, target := range []string{`/../outside_secret.txt`, `/\..\..\outside_secret.txt`, `/\..\outside_secret.txt`, `/..%5c..%5coutside_secret.txt`, `/..%5coutside_secret.txt`} {
+			w := doReq(s, "GET", target)
+			if w.Body.String() == "secret" {
+				t.Errorf("backslash traversal escaped wwwroot: %q", target)
+			}
+		}
+	})
+
 	t.Run("关闭兜底", func(t *testing.T) {
 		s.SetWWWRoot("")
 		w := doReq(s, "GET", "/hello.txt")
@@ -100,6 +118,42 @@ func TestWWWRootFallback(t *testing.T) {
 			t.Error("fallback should be disabled after SetWWWRoot(\"\")")
 		}
 	})
+}
+
+func TestWrittenWriterHijack(t *testing.T) {
+	// 中间件拿到 writtenWriter 后仍应能断言 http.Hijacker（如 WebSocket 代理劫持连接）。
+	// httptest.NewRecorder 不支持 Hijack，需起真实连接验证。
+	s, _ := newWWWRootTestServer(t)
+	s.AddMiddleHead(httpsvr.NewMiddle(func(w http.ResponseWriter, r *http.Request, df *httpsvr.DataFlow) bool {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Error("包装后的 ResponseWriter 应支持 http.Hijacker 断言")
+			return false
+		}
+		conn, rw, err := hj.Hijack()
+		if err != nil {
+			t.Errorf("Hijack failed: %v", err)
+			return false
+		}
+		_, _ = rw.WriteString("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi")
+		_ = rw.Flush()
+		_ = conn.Close()
+		return false
+	}))
+
+	ts := httptest.NewServer(s)
+	defer ts.Close()
+	u := strings.TrimPrefix(ts.URL, "http://")
+	conn, err := net.Dial("tcp", u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_, _ = conn.Write([]byte("GET /any HTTP/1.1\r\nHost: " + u + "\r\nConnection: close\r\n\r\n"))
+	body, _ := io.ReadAll(conn)
+	if !strings.HasSuffix(string(body), "hi") {
+		t.Errorf("hijacked response=%q", string(body))
+	}
 }
 
 func TestSetNotFoundHandler(t *testing.T) {
