@@ -2,10 +2,10 @@ package httpsvr
 
 import (
 	"fmt"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -36,18 +36,15 @@ func (m middleStatic) matchStaticUrl(w http.ResponseWriter, r *http.Request, fpa
 	var err error
 	var fileInfo fs.FileInfo
 	if conf.UseEmbedFile() {
-		// fileInfo, err = fs.Stat(resource.ResourceFs, fpath)
 		panic("not support UseEmbedFile")
-	} else {
-		fileInfo, err = os.Stat(fpath)
 	}
+	fileInfo, err = os.Stat(fpath)
 	fmt.Printf("---staticUrlPath(%s)--fpath(%s)--os.Stat.err(%v)--\n", staticUrlPath, fpath, err)
 
 	// 1. 先检查文件是否存在（不实际打开文件）
 	if err != nil {
 		if os.IsNotExist(err) {
 			// 文件不存在，继续后续中间件处理
-			// errWrite(w, "file IsNotExist ", 400)
 			return true
 		}
 		// 其他错误
@@ -61,55 +58,8 @@ func (m middleStatic) matchStaticUrl(w http.ResponseWriter, r *http.Request, fpa
 		return false
 	}
 
-	// 3. 只有在前面的检查都通过后，才实际打开文件
-	var file fs.File
-	var b []byte
-	if conf.UseEmbedFile() {
-		// file, err = resource.ResourceFs.Open(fpath)
-		panic("not support UseEmbedFile")
-	} else {
-		file, err = os.Open(fpath)
-	}
-	if err != nil {
-		errWrite(w, err.Error(), http.StatusInternalServerError)
-		return false
-	}
-	defer file.Close()
-
-	// 4. 设置Content-Type
-	ext := filepath.Ext(fpath)
-	switch ext {
-	case ".css":
-		w.Header().Set("Content-Type", "text/css")
-	case ".js":
-		w.Header().Set("Content-Type", "application/javascript")
-	case ".json":
-		w.Header().Set("Content-Type", "application/json")
-	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
-		w.Header().Set("Content-Type", "image/"+ext[1:])
-	case ".svg":
-		w.Header().Set("Content-Type", "image/svg+xml")
-	case ".html", ".htm":
-		w.Header().Set("Content-Type", "text/html")
-	default:
-		w.Header().Set("Content-Type", "text/plain")
-	}
-
-	// 5. 提供文件内容
-	if readSeeker, ok := file.(io.ReadSeeker); ok {
-		http.ServeContent(w, r, fileInfo.Name(), fileInfo.ModTime(), readSeeker)
-	} else {
-		// 回退方案
-		fmt.Printf("----not-readSeeker--file(%s)---can not use cache to read file by http.ServeContent---\n", fpath)
-		b, err = io.ReadAll(file)
-		if err != nil {
-			errWrite(w, err.Error(), http.StatusInternalServerError)
-			return false
-		}
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(b)))
-		w.Write(b)
-	}
-
+	// 3. 检查都通过后，设置Content-Type并提供文件内容
+	serveFileObj(w, r, fpath, fileInfo)
 	return false
 }
 
@@ -130,8 +80,9 @@ func (m middleStatic) Handler(w http.ResponseWriter, r *http.Request, dataFlow *
 		// 处理普通文件系统的情况
 		// 1. 移除静态URL前缀
 		relativePath := strings.TrimPrefix(rpath, m.staticUrlPath)
-		// 2. 安全拼接路径，防止目录遍历攻击
-		fpath = filepath.Join(m.wwwrootDir, filepath.Clean("/"+relativePath))
+		// 2. 安全拼接路径，防止目录遍历攻击。path.Clean 按POSIX语义折叠 ..，
+		// 避免 Windows 下 // 前缀被当作 UNC 导致 .. 未折叠而逃逸目录
+		fpath = filepath.Join(m.wwwrootDir, filepath.FromSlash(path.Clean("/"+relativePath)))
 	}
 	fmt.Printf("---[Static] Request Path:(%s)---File Path:(%s)---staticUrlPath(%s)---\n", rpath, fpath, m.staticUrlPath)
 	return m.matchStaticUrl(w, r, fpath, m.staticUrlPath)

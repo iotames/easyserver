@@ -12,7 +12,7 @@ import (
 // MAIN_VERSION 版本号（默认值）。版本权威来源为仓库根目录 version.txt，
 // 构建时经 -ldflags "-X github.com/iotames/easyserver/httpsvr.MAIN_VERSION=$(cat version.txt)" 注入；
 // 未注入时回退到此处默认值，两者需保持一致。
-var MAIN_VERSION = "v1.5.0"
+var MAIN_VERSION = "v1.6.0"
 
 type EasyServer struct {
 	httpServer           *http.Server
@@ -25,6 +25,11 @@ type EasyServer struct {
 	lock                 *sync.RWMutex
 	initOnce             sync.Once
 	quiet                bool // 静默模式：不打印欢迎横幅与空路由警告（构建于其上的应用可自行控制启动日志）
+	// wwwroot 兜底静态目录与 notFoundHandler 自定义404：每请求经 fieldLock 读取，
+	// SetWWWRoot/SetNotFoundHandler 随时调用即刻生效，无需重启。
+	fieldLock       sync.RWMutex
+	wwwroot         string
+	notFoundHandler func(w http.ResponseWriter, r *http.Request)
 }
 
 // NewEasyServer addr like: ":1598", "127.0.0.1:1598"
@@ -68,12 +73,30 @@ func (s *EasyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// 初始化dataflow。每个请求的生命周期中，只存在一个dataflow对象。
 	dataFlow := NewDataFlow()
-	// 按顺序依次执行中间件。业务处理逻辑包含在路由中间件里
+	// 包装 ResponseWriter 跟踪响应是否已写，供链尾兜底判断
+	ww := &writtenWriter{ResponseWriter: w}
+	// 按顺序依次执行中间件。业务处理逻辑包含在路由中间件里。
+	// blocked 标记链是否被中间件 return false 主动中断。
+	blocked := false
 	for _, m := range s.middles {
-		if !m.Handler(w, r, dataFlow) {
+		if !m.Handler(ww, r, dataFlow) {
+			blocked = true
 			break
 		}
 	}
+
+	// 链尾兜底：仅当中间件链自然执行完毕（未被 return false 中断）且全程未写
+	// 响应时启用，先尝试 WWWROOT 兜底目录直接返回文件，仍未命中才走最终 404。
+	// 链被主动中断时不兜底：拦截型中间件必须自行写响应，未写则维持历史行为
+	// （隐式空 200），绝不能反而把 wwwroot 文件提供给被拦截的请求；
+	// CORS 预检 OPTIONS（设置响应头后 return false 不写体）同样保持空 200。
+	if blocked || ww.written {
+		return
+	}
+	if s.tryServeWWWRoot(ww, r) {
+		return
+	}
+	s.notFound(ww, r)
 }
 
 // Shutdown 优雅停机：停止接收新连接，等待在途请求完成。

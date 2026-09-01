@@ -31,6 +31,7 @@ httpsvr/               — HTTP 服务器核心
   middlerouter.go      — 路由中间件（按 path + method 匹配，不支持 path 参数）
   middlecors.go        — CORS 跨域中间件
   middlestatic.go      — 静态资源服务中间件（防目录遍历）
+  wwwroot.go           — WWWROOT 全站兜底目录（SetWWWRoot/SetNotFoundHandler）+ 公共文件服务函数
   header.go            — 全局响应头设置（EasyServer.SetHeader）
   html.go              — HTML 模板渲染（text/template，支持自定义分隔符）
   dataflow.go          — 请求级数据流传递（DataFlow，读写锁保护）
@@ -56,9 +57,27 @@ examples/              — 使用示例（apisvr, tcpsvr, middlesvr, staticserve
 ```
 EasyServer.ServeHTTP(w, r):
   1. NewDataFlow() — 创建请求级数据流
-  2. 按顺序执行 s.middles 切片中的所有中间件
+  2. 按顺序执行 s.middles 切片中的所有中间件（经 writtenWriter 包装跟踪响应是否已写）
   3. 任一中间件返回 false 则中断链
+  4. 链尾兜底：仅当链自然走完且未写响应时，依次尝试 WWWROOT 兜底文件、最终 404
 ```
+
+### WWWROOT 兜底与自定义 404
+
+路由中间件匹配不到时**不再直接写 404**（`return true` 不写响应），由 `ServeHTTP` 链尾统一处理：
+先尝试 `SetWWWRoot(dir)` 设置的兜底目录（按请求路径定位文件，目录请求尝试其下 `index.html`），
+仍未命中才调用 `SetNotFoundHandler` 注册的自定义 404（默认 `ResponseNotFound` JSON 响应体）。
+两者每请求经 `fieldLock` 读取，**随时调用即刻生效，无需重启**。框架自身不读配置文件，
+外部配置（如 easyconf）读出后调 API 传入即可（推荐环境变量 KEY：`WWWROOT`）。
+
+**兜底触发条件**：仅当中间件链自然执行完毕（无任何中间件 `return false`）且全程未写响应时才兜底。
+链被中间件主动中断时一律不兜底——拦截请求的中间件**必须自行写响应**，未写则维持历史行为
+（隐式空 200），不会把 wwwroot 文件提供给被拦截的请求。CORS 预检 OPTIONS（设置响应头后
+`return false` 不写体）即走此路径，保持空 200。wwwroot 兜底只应答 GET/HEAD，其他方法直接走 404。
+
+有意的行为变化：路由未命中时 tail 中间件看到的是「未写响应」；路由命中但 handler 未写任何响应时
+会走兜底/404（原先为空 200）。因此 handler 若在 goroutine 中异步写响应，必须保证同步返回前已写完，
+否则链尾可能抢先写入 404。默认 404 响应体保持现状（JSON、无 HTTP 404 状态码）。
 
 ### 中间件链组装时机
 
@@ -87,11 +106,12 @@ headMiddles → routerMiddle → tailMiddles
 
 ## 关键约定与陷阱
 
-### ServeHTTP 测试陷阱
+### ServeHTTP 可直接用于 httptest
 
-`EasyServer` 实现了 `http.Handler` 接口（`ServeHTTP` 方法），但如果通过 `httptest` 直接调用 `s.ServeHTTP(w, req)`，中间件链**不会**被初始化（因为 `listenPrepare` 只由 `ListenAndServe` 调用）。当前测试存在此问题。
-
-如果需要测试通过，或者修改 `ServeHTTP` 使其也能在无 `listenPrepare` 时工作，见 `server.go:46-56`。
+`EasyServer` 实现了 `http.Handler` 接口。`ServeHTTP` 首次调用经 `initOnce` 触发 `listenPrepare()`，
+因此通过 `httptest` 直接调用 `s.ServeHTTP(w, req)` 也能完成中间件链组装，无需 `ListenAndServe`。
+测试中建议先 `s.SetQuiet(true)` 关闭欢迎横幅等启动日志。注意 `AddHandler`/`AddMiddleHead` 等
+注册动作必须在首次请求前完成（中间件链只组装一次）。
 
 ### 路径匹配是精确匹配
 
@@ -99,7 +119,9 @@ headMiddles → routerMiddle → tailMiddles
 
 ### 静态文件防目录遍历
 
-`middlestatic.go` 使用 `filepath.Clean` + `filepath.Join` 防止 `../` 攻击。必须先 `os.Stat` 检查存在性，再 `os.Open` 打开文件。
+`middlestatic.go` / `wwwroot.go` 使用 `path.Clean`（POSIX 语义）+ `filepath.FromSlash` + `filepath.Join` 防止 `../` 攻击。
+**必须用 `path.Clean` 而非 `filepath.Clean`**：Windows 下 URL 以 `/` 开头拼接成 `//` 时，`filepath.Clean`
+会将其当作 UNC 前缀保留、`..` 不被折叠，可逃逸目录（已修复的真实漏洞）。必须先 `os.Stat` 检查存在性，再 `os.Open` 打开文件。
 
 ### CORS 只能设置一次
 
@@ -137,6 +159,7 @@ headMiddles → routerMiddle → tailMiddles
 | 中间件定义 | `httpsvr/middleware.go:7` |
 | CORS 中间件 | `httpsvr/middlecors.go` |
 | 静态资源 | `httpsvr/middlestatic.go` |
+| WWWROOT 兜底 / 自定义 404 | `httpsvr/wwwroot.go` |
 | 请求上下文 | `httpsvr/context.go:13` |
 | Session 管理 | `httpsvr/ctx_session.go` |
 | Cookie 管理 | `httpsvr/ctx_cookie.go` |

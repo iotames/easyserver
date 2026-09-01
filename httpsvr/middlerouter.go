@@ -44,9 +44,7 @@ func (m middleRouter) Handler(w http.ResponseWriter, r *http.Request, dataFlow *
 			}
 		}
 	}
-	if !isMatch {
-		// 匹配不到UrlPath和RequestMethod
-		ResponseNotFound(w, r)
-	}
+	// 匹配不到UrlPath和RequestMethod时同样不写响应，交给链尾处理
+	// （ServeHTTP 链尾依次尝试 WWWROOT 兜底、最终 404）。
 	return true
 }
